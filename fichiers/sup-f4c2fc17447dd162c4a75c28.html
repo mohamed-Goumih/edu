@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta name="ge-sup" content="eyJ0aXRyZSI6IkFuZHJvaWQg4oCUIFN1cHBsw6ltZW50IDcgOiBJbnRlbnRzIGV4cGxpY2l0ZXMsIGltcGxpY2l0ZXMgJiBCdW5kbGUiLCJ0b29sIjoiYW5kcm9pZDciLCJkZWJ1dCI6MTc5NDE3OTgyMDAwMCwiZmluIjoxNzk0MjY2MjIwMDAwLCJ2IjoxNzk0MTc5ODcxMTg2fQ==">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Android — Intents & Bundle</title>
+<style>
+:root{
+  --bg:#EEF0F4; --ink:#1B1F27; --muted:#5D6573; --rule:#D2D7DF; --card:#FFFFFF;
+  --hl:#7CB518; --hl-d:#4E7A0A; --hl-soft:#EAF5D8; --acc:#3446D8; --acc-soft:#E3E7FF; --warn:#C0571B; --red:#D9321F; --ok:#2E8B3A;
+  --ex:#7F52FF; --ex-soft:#EFE9FF; --im:#E0731E; --im-soft:#FDEBDD; --bd:#0E9AA7; --bd-soft:#DDF4F6;
+  --mono:ui-monospace,"SF Mono",Consolas,"Liberation Mono",monospace;
+  --sans:"Segoe UI",Roboto,Helvetica,Arial,Noto Color Emoji,sans-serif;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#13161C;--ink:#E8EBF0;--muted:#9AA3B2;--rule:#2C333F;--card:#1C212A;--hl:#9BD43A;--hl-d:#C4EE7A;--hl-soft:#26341A;--acc:#8C9BFF;--acc-soft:#262E57;--warn:#F0A060;--ex-soft:#2D2550;--im-soft:#40260F;--bd-soft:#123A3E}}
+:root[data-theme="dark"]{--bg:#13161C;--ink:#E8EBF0;--muted:#9AA3B2;--rule:#2C333F;--card:#1C212A;--hl:#9BD43A;--hl-d:#C4EE7A;--hl-soft:#26341A;--acc:#8C9BFF;--acc-soft:#262E57;--warn:#F0A060;--ex-soft:#2D2550;--im-soft:#40260F;--bd-soft:#123A3E}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.45}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--acc);outline-offset:2px;border-radius:4px}
+.wrap{max-width:1340px;margin:0 auto;padding:22px 16px 48px}
+header{text-align:center;margin-bottom:12px}
+.title{display:inline-block;background:linear-gradient(#8FD03A,#5E9A12);color:#fff;border:2px solid #4E7A0A;border-radius:6px;padding:8px 26px;font-size:clamp(1.2rem,3.2vw,1.9rem);box-shadow:2px 4px 8px rgba(0,0,0,.3);margin:0;animation:pop .6s both;text-shadow:0 1px 2px rgba(0,0,0,.3)}
+.sub{color:var(--muted);margin:10px auto 0;max-width:860px}
+@keyframes pop{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:none}}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin:14px 0 12px}
+.tabs button{background:var(--card);border:1px solid var(--rule);border-radius:20px;padding:7px 16px;cursor:pointer;font-weight:600}
+.tabs button[aria-selected="true"]{background:var(--hl-d);border-color:var(--hl-d);color:#fff}
+.pane[hidden]{display:none}
+.card{background:var(--card);border:1px solid var(--rule);border-radius:12px;padding:14px 16px;min-width:0}
+h2{font-size:1.08rem;margin:0 0 10px}h3{font-size:1rem;margin:14px 0 6px}
+.muted{color:var(--muted)}
+code,.k{font-family:var(--mono);font-size:.88em;background:rgba(127,127,127,.12);padding:1px 5px;border-radius:4px}
+.tag{display:inline-block;font-size:.72rem;font-weight:700;padding:1px 8px;border-radius:999px;vertical-align:middle}
+.tag.ex{background:var(--ex-soft);color:var(--ex)}.tag.im{background:var(--im-soft);color:var(--im)}.tag.bd{background:var(--bd-soft);color:var(--bd)}
+.narr{min-height:1.5em;text-align:center;font-weight:600;color:var(--acc);margin:4px 0 10px}
+
+/* ---------- simulateur ---------- */
+.stage{position:relative;display:grid;grid-template-columns:minmax(250px,1fr) minmax(220px,.9fr) minmax(250px,1fr);gap:14px;align-items:start}
+@media (max-width:900px){.stage{grid-template-columns:1fr}}
+.phone{width:min(100%,300px);margin:0 auto;background:#111;border-radius:34px;padding:12px 10px 16px;box-shadow:0 10px 26px rgba(0,0,0,.28)}
+.scr{background:#fff;color:#1B1F27;border-radius:24px;overflow:hidden;min-height:470px;display:flex;flex-direction:column;position:relative}
+.sbar{display:flex;justify-content:space-between;font-size:.72rem;padding:5px 14px;background:#0F5132;color:#fff}
+.abar{background:#1E7A4C;color:#fff;padding:10px 14px;font-weight:700;font-size:.95rem;display:flex;align-items:center;gap:8px;transition:background .3s}
+.pbody{padding:12px 14px;display:flex;flex-direction:column;gap:8px;flex:1;font-size:.9rem}
+.pbody label{font-size:.75rem;color:#5D6573;font-weight:600}
+.pbody input[type=text],.pbody input[type=number]{border:0;border-bottom:2px solid #1E7A4C;padding:4px 2px;background:transparent;color:#1B1F27;width:100%}
+.chk{display:flex;align-items:center;gap:6px;font-size:.85rem}
+.abtn{border:0;border-radius:6px;padding:8px 10px;font-weight:700;font-size:.8rem;cursor:pointer;text-align:left;color:#fff;box-shadow:0 2px 4px rgba(0,0,0,.2);transition:transform .1s}
+.abtn:active{transform:scale(.97)}.abtn.ex{background:#7F52FF}.abtn.im{background:#E0731E}.abtn.rs{background:#0E9AA7}
+.abtn[disabled]{opacity:.5;cursor:default}
+.res{background:#EAF5D8;border-left:4px solid #4E7A0A;padding:6px 8px;border-radius:4px;font-size:.82rem}
+.sys{background:var(--card);border:2px dashed var(--rule);border-radius:14px;padding:12px;min-height:200px;display:flex;flex-direction:column;gap:8px}
+.sys h2{text-align:center;margin:0}
+.sysst{font-size:.86rem}
+.sysst ol{margin:4px 0;padding-left:20px}.sysst li{margin:2px 0;opacity:.35;transition:opacity .3s}.sysst li.on{opacity:1;font-weight:600}.sysst li.done{opacity:.8}
+.cand{display:flex;flex-direction:column;gap:4px}
+.cand div{border:1px solid var(--rule);border-radius:8px;padding:5px 8px;font-size:.8rem;display:flex;justify-content:space-between;gap:6px}
+.cand .y{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 10%,transparent)}.cand .n{opacity:.55;text-decoration:line-through}
+.env{position:absolute;z-index:20;pointer-events:none;background:#FFF7D6;border:2px solid #C9A400;border-radius:8px;padding:4px 8px;font-size:.8rem;font-weight:700;color:#5A4500;box-shadow:0 6px 16px rgba(0,0,0,.3);white-space:nowrap;opacity:0}
+.env small{display:block;font-weight:500;font-size:.68rem}
+.opts{display:flex;flex-wrap:wrap;gap:8px 18px;justify-content:center;margin:8px 0;font-size:.88rem}
+.opts label{display:flex;gap:6px;align-items:center;cursor:pointer}
+.opts select{padding:3px 6px;border:1px solid var(--rule);border-radius:6px;background:var(--card)}
+.chooser{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:16px 16px 0 0;box-shadow:0 -6px 20px rgba(0,0,0,.25);padding:12px;animation:up .3s both;z-index:3}
+.chooser p{margin:0 0 8px;font-weight:700;font-size:.85rem}
+.chooser .apps{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.chooser button{border:0;background:#F1F3F6;border-radius:10px;padding:8px 2px;font-size:.7rem;cursor:pointer;color:#1B1F27;display:flex;flex-direction:column;align-items:center;gap:2px}
+.chooser button b{font-size:1.4rem}
+.chooser .once{display:flex;justify-content:flex-end;gap:12px;margin-top:8px;font-size:.78rem;color:#1E7A4C;font-weight:700}
+@keyframes up{from{transform:translateY(100%)}to{transform:none}}
+.toast{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);background:#323232;color:#fff;padding:6px 12px;border-radius:16px;font-size:.75rem;animation:fade 2.6s both;z-index:4;max-width:90%;text-align:center}
+@keyframes fade{0%{opacity:0}10%,80%{opacity:1}100%{opacity:0}}
+.crash{background:#FDECEA;color:#9B1C10;border:1px solid #F3B8B0;border-radius:8px;padding:8px;font-size:.8rem;font-family:var(--mono)}
+.colors{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.colors button{height:46px;border:0;border-radius:10px;cursor:pointer;color:#fff;font-weight:700;font-size:.75rem;text-shadow:0 1px 2px rgba(0,0,0,.4)}
+.kv{font-size:.82rem;border-collapse:collapse;width:100%}.kv td{padding:3px 4px;border-bottom:1px solid #E3E6EB}.kv td:first-child{color:#5D6573;font-family:var(--mono);font-size:.75rem}
+.applogo{font-size:2.2rem;text-align:center;margin:6px 0}
+.lower{display:grid;grid-template-columns:1.25fr 1fr;gap:14px;margin-top:14px}
+@media (max-width:900px){.lower{grid-template-columns:1fr}}
+.ctabs{display:flex;gap:4px;margin-bottom:6px;flex-wrap:wrap}
+.ctabs button{border:1px solid var(--rule);background:var(--card);border-radius:6px;padding:3px 10px;cursor:pointer;font-size:.82rem}
+.ctabs button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+pre.code{background:#1E2230;color:#E6E9F2;border-radius:10px;padding:10px 0;margin:0;font-family:var(--mono);font-size:.8rem;line-height:1.5;overflow:auto;max-height:420px}
+pre.code span.l{display:block;padding:0 12px;white-space:pre}
+pre.code span.l.hi{background:rgba(124,181,24,.25);box-shadow:inset 3px 0 #9BD43A}
+.kw{color:#C792EA}.st{color:#C3E88D}.cm{color:#7F8BA8;font-style:italic}.fn{color:#82AAFF}.ty{color:#FFCB6B}.nu{color:#F78C6C}.xt{color:#89DDFF}
+.bundle{border:2px solid var(--bd);border-radius:12px;padding:8px 10px;background:var(--bd-soft)}
+.bundle table{width:100%;border-collapse:collapse;font-size:.82rem}
+.bundle th,.bundle td{text-align:left;padding:4px 6px;border-bottom:1px solid color-mix(in srgb,var(--bd) 30%,transparent)}
+.bundle td code{background:transparent;padding:0}
+.bundle tr.new td{animation:flash 1.2s}
+@keyframes flash{from{background:color-mix(in srgb,var(--bd) 40%,transparent)}to{background:transparent}}
+.log{background:#0F1218;color:#C9D1E0;border-radius:10px;padding:8px 10px;font-family:var(--mono);font-size:.74rem;height:170px;overflow:auto;margin-top:10px}
+.log div{white-space:pre-wrap}.log .i{color:#9BD43A}.log .w{color:#F0A060}.log .e{color:#FF7A6B}.log .d{color:#82AAFF}
+
+/* ---------- comprendre ---------- */
+.anat{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:8px 0 12px}
+.anat button{border:2px solid var(--rule);background:var(--card);border-radius:10px;padding:8px 12px;cursor:pointer;font-weight:600;font-size:.88rem}
+.anat button.on{border-color:var(--acc);background:var(--acc-soft)}
+.anat button i{font-style:normal;font-size:.7rem;display:block;color:var(--muted);font-weight:500}
+.anex{border-left:4px solid var(--acc);padding:6px 12px;background:var(--acc-soft);border-radius:6px;min-height:60px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}@media (max-width:800px){.grid2{grid-template-columns:1fr}}
+table.t{width:100%;border-collapse:collapse;font-size:.86rem}
+table.t th,table.t td{border:1px solid var(--rule);padding:6px 8px;text-align:left;vertical-align:top}
+table.t th{background:var(--hl-soft)}
+.note{background:color-mix(in srgb,var(--warn) 12%,transparent);border-left:4px solid var(--warn);padding:6px 10px;border-radius:6px;font-size:.88rem;margin:8px 0}
+
+/* ---------- atelier résolution ---------- */
+.mk{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:10px}
+.mk label{font-size:.78rem;font-weight:700;color:var(--muted);display:block}
+.mk select,.mk input{width:100%;padding:6px 8px;border:1px solid var(--rule);border-radius:8px;background:var(--card)}
+.verdict{font-weight:700;padding:8px 12px;border-radius:8px;margin:8px 0}
+.verdict.z{background:#FDECEA;color:#9B1C10}.verdict.o{background:var(--hl-soft);color:var(--hl-d)}.verdict.m{background:var(--im-soft);color:var(--im)}
+.apps2{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.app2{border:2px solid var(--rule);border-radius:10px;padding:8px 10px;font-size:.82rem;transition:border-color .3s,opacity .3s}
+.app2.y{border-color:var(--ok)}.app2.n{opacity:.6}
+.app2 b{font-size:.95rem}.app2 pre{margin:4px 0;font-family:var(--mono);font-size:.7rem;white-space:pre-wrap;background:rgba(127,127,127,.1);padding:4px 6px;border-radius:6px}
+.why{font-size:.76rem}.why span{display:inline-block;margin-right:6px}
+
+/* ---------- quiz ---------- */
+.q{margin:0 0 14px}.q p{margin:0 0 6px;font-weight:600}
+.q .o{display:flex;flex-direction:column;gap:6px}
+.q .o button{text-align:left;background:var(--card);border:1px solid var(--rule);border-radius:8px;padding:7px 10px;cursor:pointer}
+.q .o button.r{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 14%,transparent)}
+.q .o button.w{border-color:var(--red);background:color-mix(in srgb,var(--red) 12%,transparent)}
+.q .e{font-size:.88rem;color:var(--muted);margin-top:6px}
+#score{font-weight:700;color:var(--acc)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1 class="title">Android — Supplément 7 : Intents explicites, implicites &amp; Bundle</h1>
+  <p class="sub">Un <b>Intent</b> est un message envoyé au système Android pour démarrer une Activity. <span class="tag ex">explicite</span> : on nomme la classe cible. <span class="tag im">implicite</span> : on décrit une action et Android cherche l'application capable de la faire. Le <span class="tag bd">Bundle</span> transporte les données (extras).</p>
+</header>
+<nav class="tabs" role="tablist">
+  <button role="tab" aria-selected="true" data-tab="sim">📱 Simulateur</button>
+  <button role="tab" aria-selected="false" data-tab="anat">🧩 Comprendre</button>
+  <button role="tab" aria-selected="false" data-tab="res">🔎 Atelier résolution</button>
+  <button role="tab" aria-selected="false" data-tab="quiz">✅ Quiz</button>
+</nav>
+
+<!-- ======================= SIMULATEUR ======================= -->
+<section class="pane" id="p-sim">
+  <div class="opts">
+    <label>Envoi des données :
+      <select id="o-style">
+        <option value="put">intent.putExtra(clé, valeur)</option>
+        <option value="bundle">Bundle() + putExtras(bundle)</option>
+        <option value="ktx">bundleOf(…) (Kotlin KTX)</option>
+      </select></label>
+    <label><input type="checkbox" id="o-none"> Simuler « aucune application compatible »</label>
+    <label><input type="checkbox" id="o-slow"> Animation lente</label>
+  </div>
+  <p class="narr" id="narr">Remplissez le formulaire, puis cliquez sur un bouton du téléphone de gauche.</p>
+  <div class="stage" id="stage">
+    <div>
+      <div class="phone"><div class="scr" id="scrA">
+        <div class="sbar"><span>CMC Agadir</span><span id="clock">08:30</span></div>
+        <div class="abar">🏠 MainActivity</div>
+        <div class="pbody">
+          <div><label for="f-nom">Nom (String)</label><input type="text" id="f-nom" value="Yasmine"></div>
+          <div><label for="f-age">Âge (Int)</label><input type="number" id="f-age" value="20" min="0" max="99"></div>
+          <div class="chk"><input type="checkbox" id="f-et" checked><label for="f-et" style="font-size:.85rem;color:inherit">Stagiaire en 2ᵉ année (Boolean)</label></div>
+          <div class="chk" style="flex-wrap:wrap"><span style="font-size:.75rem;color:#5D6573;font-weight:600;width:100%">Modules (ArrayList&lt;String&gt;)</span>
+            <label class="chk" style="color:inherit"><input type="checkbox" class="f-mod" value="Kotlin" checked> Kotlin</label>
+            <label class="chk" style="color:inherit"><input type="checkbox" class="f-mod" value="Android" checked> Android</label>
+            <label class="chk" style="color:inherit"><input type="checkbox" class="f-mod" value="Flutter"> Flutter</label></div>
+          <button class="abtn ex" data-act="profil">➡️ Voir le profil <small>(explicite + Bundle)</small></button>
+          <button class="abtn rs" data-act="couleur">🎨 Choisir une couleur <small>(explicite + résultat)</small></button>
+          <button class="abtn im" data-act="web">🌐 Ouvrir ofppt.ma <small>(ACTION_VIEW)</small></button>
+          <button class="abtn im" data-act="dial">📞 Appeler le CMC <small>(ACTION_DIAL)</small></button>
+          <button class="abtn im" data-act="sms">💬 Envoyer un SMS <small>(ACTION_SENDTO)</small></button>
+          <button class="abtn im" data-act="share">📤 Partager le profil <small>(ACTION_SEND + chooser)</small></button>
+          <button class="abtn im" data-act="geo">📍 Localiser le CMC <small>(geo:)</small></button>
+          <div class="res" id="resA" hidden></div>
+        </div>
+      </div></div>
+    </div>
+    <div class="sys" id="sys">
+      <h2>⚙️ Système Android</h2>
+      <p class="muted" style="font-size:.8rem;text-align:center;margin:0">ActivityManager + PackageManager</p>
+      <div class="sysst" id="sysst"><p class="muted">En attente d'un <code>startActivity(intent)</code>…</p></div>
+    </div>
+    <div>
+      <div class="phone"><div class="scr" id="scrB">
+        <div class="sbar"><span>CMC Agadir</span><span>▲ ●</span></div>
+        <div class="abar" id="abarB" style="background:#5D6573">— aucune Activity —</div>
+        <div class="pbody" id="bodyB"><p style="color:#5D6573;text-align:center;margin-top:60px">L'Activity démarrée par l'Intent s'affichera ici.</p></div>
+      </div></div>
+    </div>
+    <div class="env" id="env">✉️ Intent<small id="envs"></small></div>
+  </div>
+
+  <div class="lower">
+    <div class="card">
+      <h2>💻 Code Kotlin <span class="muted" style="font-weight:400;font-size:.85rem">— les lignes surlignées s'exécutent pendant l'animation</span></h2>
+      <div class="ctabs" id="ctabs">
+        <button data-c="send" class="on">Émetteur (MainActivity)</button>
+        <button data-c="recv">Récepteur</button>
+        <button data-c="man">AndroidManifest.xml</button>
+      </div>
+      <pre class="code" id="code"></pre>
+    </div>
+    <div class="card">
+      <h2>🎒 Contenu du Bundle (extras) <span class="tag bd">clé → valeur</span></h2>
+      <div class="bundle" id="bundle"><p class="muted" style="margin:0">Le Bundle est vide : aucun Intent envoyé.</p></div>
+      <div class="log" id="log" aria-live="polite"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= COMPRENDRE ======================= -->
+<section class="pane" id="p-anat" hidden>
+  <div class="card">
+    <h2>🧩 Anatomie d'un Intent — cliquez sur chaque partie</h2>
+    <div class="anat" id="anat"></div>
+    <div class="anex" id="anex"></div>
+  </div>
+  <div class="grid2" style="margin-top:14px">
+    <div class="card">
+      <h2>Explicite ou implicite ?</h2>
+      <table class="t">
+        <tr><th></th><th><span class="tag ex">Explicite</span></th><th><span class="tag im">Implicite</span></th></tr>
+        <tr><td>Cible</td><td>Une classe précise : <code>ProfilActivity::class.java</code></td><td>Une <b>action</b> (+ data, type) : <code>ACTION_VIEW</code></td></tr>
+        <tr><td>Qui choisit ?</td><td>Le développeur</td><td>Le système, via les <code>&lt;intent-filter&gt;</code> des applis installées</td></tr>
+        <tr><td>Usage typique</td><td>Naviguer entre les écrans de <b>son</b> application</td><td>Utiliser une <b>autre</b> application : navigateur, téléphone, SMS, partage, carte…</td></tr>
+        <tr><td>Si personne ne répond</td><td>Impossible si l'Activity est déclarée dans le Manifest</td><td><code>ActivityNotFoundException</code> → <code>try/catch</code></td></tr>
+        <tr><td>Plusieurs candidats</td><td>—</td><td>Boîte « Ouvrir avec » ou <code>Intent.createChooser()</code></td></tr>
+        <tr><td>Exemple</td><td><code>Intent(this, ProfilActivity::class.java)</code></td><td><code>Intent(Intent.ACTION_DIAL, Uri.parse("tel:0528…"))</code></td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h2>🎒 Le Bundle : types et méthodes</h2>
+      <table class="t">
+        <tr><th>Type</th><th>Envoyer</th><th>Recevoir (dans la cible)</th></tr>
+        <tr><td>String</td><td><code>putExtra("nom", nom)</code></td><td><code>getStringExtra("nom")</code> → <code>String?</code></td></tr>
+        <tr><td>Int</td><td><code>putExtra("age", 20)</code></td><td><code>getIntExtra("age", 0)</code> ← valeur par défaut obligatoire</td></tr>
+        <tr><td>Boolean</td><td><code>putExtra("ok", true)</code></td><td><code>getBooleanExtra("ok", false)</code></td></tr>
+        <tr><td>Double</td><td><code>putExtra("moy", 14.5)</code></td><td><code>getDoubleExtra("moy", 0.0)</code></td></tr>
+        <tr><td>ArrayList&lt;String&gt;</td><td><code>putStringArrayListExtra("mods", liste)</code></td><td><code>getStringArrayListExtra("mods")</code></td></tr>
+        <tr><td>Objet</td><td><code>putExtra("st", stagiaire)</code> (classe <code>@Parcelize … : Parcelable</code>)</td><td><code>getParcelableExtra("st", Stagiaire::class.java)</code> (API 33+)</td></tr>
+        <tr><td>Bundle entier</td><td><code>putExtras(bundle)</code></td><td><code>intent.extras</code> → <code>Bundle?</code> puis <code>getString("nom")</code></td></tr>
+      </table>
+      <p class="note">⚠️ Un Bundle est limité (~1 Mo partagé par la transaction) : on n'y met <b>pas</b> d'images ni de grosses listes, on passe plutôt un identifiant ou une URI.</p>
+      <p class="note">💡 Bonne pratique : déclarez les clés comme constantes (<code>const val EXTRA_NOM = "nom"</code>) dans un <code>companion object</code> pour éviter les fautes de frappe entre l'émetteur et le récepteur.</p>
+    </div>
+  </div>
+  <div class="grid2" style="margin-top:14px">
+    <div class="card">
+      <h2>📥 Recevoir un Intent implicite : l'intent-filter</h2>
+      <pre class="code" id="ifcode"></pre>
+      <p class="muted" style="font-size:.85rem">Pour qu'une Activity soit candidate, l'Intent doit passer les <b>3 tests</b> : <b>action</b> (une des actions déclarées), <b>catégorie</b> (toutes les catégories de l'Intent déclarées — <code>startActivity</code> ajoute toujours <code>DEFAULT</code>) et <b>data</b> (scheme / host / mimeType compatibles).</p>
+    </div>
+    <div class="card">
+      <h2>↩️ Récupérer un résultat</h2>
+      <pre class="code" id="rescode"></pre>
+      <p class="note">L'ancien <code>startActivityForResult()</code> + <code>onActivityResult()</code> est <b>déprécié</b> : on utilise <code>registerForActivityResult(ActivityResultContracts.StartActivityForResult())</code>.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= ATELIER RÉSOLUTION ======================= -->
+<section class="pane" id="p-res" hidden>
+  <div class="card">
+    <h2>🔎 Construisez un Intent implicite : qui peut y répondre ?</h2>
+    <div class="mk">
+      <div><label for="r-act">Action</label><select id="r-act">
+        <option>Intent.ACTION_VIEW</option><option>Intent.ACTION_DIAL</option><option>Intent.ACTION_SENDTO</option><option>Intent.ACTION_SEND</option><option>com.cmc.quiz.ACTION_REVISER</option></select></div>
+      <div><label for="r-data">Data (URI) — vide = aucune</label><input id="r-data" value="https://www.ofppt.ma"></div>
+      <div><label for="r-type">Type MIME</label><select id="r-type"><option value="">(aucun)</option><option>text/plain</option><option>image/jpeg</option><option>application/pdf</option></select></div>
+      <div><label for="r-cat">Catégorie supplémentaire</label><select id="r-cat"><option value="">(aucune — DEFAULT ajoutée)</option><option>android.intent.category.BROWSABLE</option><option>android.intent.category.APP_MAPS</option></select></div>
+    </div>
+    <div class="mk" style="grid-template-columns:1fr"><div><label>Exemples rapides</label><div class="opts" style="justify-content:flex-start;margin:4px 0" id="presets"></div></div></div>
+    <pre class="code" id="r-code"></pre>
+    <div class="verdict" id="verdict"></div>
+    <div class="apps2" id="apps2"></div>
+  </div>
+</section>
+
+<!-- ======================= QUIZ ======================= -->
+<section class="pane" id="p-quiz" hidden>
+  <div class="card"><h2>✅ Quiz — Intents &amp; Bundle</h2><div id="quiz"></div><p id="score">Score : 0 / 0</p></div>
+</section>
+</div>
+
+<script>
+(function(){
+'use strict';
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const E=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms*($('#o-slow').checked?2.2:1)));
+
+/* ---------- onglets ---------- */
+$$('.tabs button').forEach(b=>b.onclick=()=>{$$('.tabs button').forEach(x=>x.setAttribute('aria-selected',x===b));$$('.pane').forEach(p=>p.hidden=p.id!=='p-'+b.dataset.tab)});
+
+/* ---------- coloration Kotlin / XML ---------- */
+const KW=/\b(val|var|fun|class|override|private|import|if|else|return|try|catch|null|true|false|object|companion|const|when|is|as|super|this|it|apply|also|let)\b/g;
+function hl(line){
+  const t=E(line);
+  if(/^\s*\/\//.test(line))return '<span class="cm">'+t+'</span>';
+  if(/^\s*&lt;|^\s*<\/?[a-z]/i.test(t)||/^\s*&lt;\/?[a-z-]+/.test(t))return t.replace(/(&lt;\/?[\w.-]+)/g,'<span class="xt">$1</span>').replace(/(&quot;[^&]*?&quot;)/g,'<span class="st">$1</span>');
+  let out=t.replace(/(&quot;.*?&quot;)/g,'\u0001$1\u0002');
+  const parts=out.split(/(\u0001.*?\u0002)/);
+  return parts.map(p=>p[0]==='\u0001'?'<span class="st">'+p.slice(1,-1)+'</span>':p.replace(KW,'<span class="kw">$1</span>').replace(/\b([A-Z][A-Za-z]+)(?=[.(:<]|::|\b)/g,'<span class="ty">$1</span>').replace(/\b(\d+(?:\.\d+)?)\b/g,'<span class="nu">$1</span>').replace(/(\/\/.*)$/,'<span class="cm">$1</span>')).join('');
+}
+function codeHtml(lines){return lines.map((l,i)=>'<span class="l" data-i="'+i+'">'+(hl(l)||' ')+'</span>').join('')}
+
+/* ---------- état ---------- */
+let busy=false,ctab='send',cur='profil',lastLines={send:[],recv:[],man:[]},resultColor=null;
+function form(){return{nom:$('#f-nom').value.trim()||'Anonyme',age:parseInt($('#f-age').value,10)||0,et:$('#f-et').checked,mods:$$('.f-mod').filter(x=>x.checked).map(x=>x.value)}}
+const style=()=>$('#o-style').value;
+
+/* ---------- actions ---------- */
+const APPS={
+  chrome:{n:'Chrome',ic:'🌐',c:'#1A73E8'},firefox:{n:'Firefox',ic:'🦊',c:'#E66000'},phone:{n:'Téléphone',ic:'📞',c:'#188038'},
+  msg:{n:'Messages',ic:'💬',c:'#1967D2'},wa:{n:'WhatsApp',ic:'🟢',c:'#25D366'},gmail:{n:'Gmail',ic:'✉️',c:'#D93025'},
+  bt:{n:'Bluetooth',ic:'🔷',c:'#1565C0'},maps:{n:'Maps',ic:'🗺️',c:'#34A853'},waze:{n:'Waze',ic:'🚙',c:'#33CCFF'}
+};
+const ACTS={
+  profil:{kind:'ex',label:'Explicite : ProfilActivity',target:'ProfilActivity'},
+  couleur:{kind:'rs',label:'Explicite pour résultat : CouleurActivity',target:'CouleurActivity'},
+  web:{kind:'im',action:'Intent.ACTION_VIEW',data:'https://www.ofppt.ma',apps:['chrome','firefox'],why:'action VIEW + scheme https'},
+  dial:{kind:'im',action:'Intent.ACTION_DIAL',data:'tel:0528000000',apps:['phone'],why:'action DIAL + scheme tel'},
+  sms:{kind:'im',action:'Intent.ACTION_SENDTO',data:'smsto:0612345678',apps:['msg','wa'],why:'action SENDTO + scheme smsto'},
+  share:{kind:'im',action:'Intent.ACTION_SEND',type:'text/plain',apps:['wa','gmail','msg','bt'],chooser:true,why:'action SEND + type text/plain'},
+  geo:{kind:'im',action:'Intent.ACTION_VIEW',data:'geo:30.4202,-9.5982?q=CMC+Agadir',apps:['maps','waze'],why:'action VIEW + scheme geo'}
+};
+
+/* ---------- génération du code ---------- */
+function extrasLines(f,ind,target){
+  const s=style(),L=[];
+  const mods='arrayListOf('+f.mods.map(m=>'"'+m+'"').join(', ')+')';
+  if(s==='put'){
+    L.push(ind+'putExtra("nom", "'+f.nom+'")              // String');
+    L.push(ind+'putExtra("age", '+f.age+')                // Int');
+    L.push(ind+'putExtra("etudiant2A", '+f.et+')        // Boolean');
+    L.push(ind+'putStringArrayListExtra("modules", '+mods+')');
+  }else if(s==='bundle'){
+    L.push(ind+'val bundle = Bundle()');
+    L.push(ind+'bundle.putString("nom", "'+f.nom+'")');
+    L.push(ind+'bundle.putInt("age", '+f.age+')');
+    L.push(ind+'bundle.putBoolean("etudiant2A", '+f.et+')');
+    L.push(ind+'bundle.putStringArrayList("modules", '+mods+')');
+    L.push(ind+'putExtras(bundle)                    // tout le Bundle d\'un coup');
+  }else{
+    L.push(ind+'putExtras(bundleOf(                   // import androidx.core.os.bundleOf');
+    L.push(ind+'    "nom" to "'+f.nom+'",');
+    L.push(ind+'    "age" to '+f.age+',');
+    L.push(ind+'    "etudiant2A" to '+f.et+',');
+    L.push(ind+'    "modules" to '+mods);
+    L.push(ind+'))');
+  }
+  return L;
+}
+function sendCode(a,f){
+  const A=ACTS[a],L=['class MainActivity : AppCompatActivity() {',''];
+  if(a==='couleur'){
+    L.push('    // 1) on enregistre le « lanceur » AVANT onCreate (propriété de la classe)');
+    L.push('    private val choisirCouleur = registerForActivityResult(');
+    L.push('        ActivityResultContracts.StartActivityForResult()');
+    L.push('    ) { resultat ->');
+    L.push('        if (resultat.resultCode == RESULT_OK) {');
+    L.push('            val nom = resultat.data?.getStringExtra("couleur_nom")');
+    L.push('            val hex = resultat.data?.getIntExtra("couleur_hex", 0)');
+    L.push('            binding.tvResultat.text = "Couleur choisie : $nom"');
+    L.push('        } else {');
+    L.push('            Toast.makeText(this, "Choix annulé", Toast.LENGTH_SHORT).show()');
+    L.push('        }');
+    L.push('    }','');
+  }
+  L.push('    override fun onCreate(savedInstanceState: Bundle?) {');
+  L.push('        super.onCreate(savedInstanceState)');
+  L.push('        // … setContentView / binding …');
+  const btn={profil:'btnProfil',couleur:'btnCouleur',web:'btnSite',dial:'btnAppeler',sms:'btnSms',share:'btnPartager',geo:'btnCarte'}[a];
+  L.push('        binding.'+btn+'.setOnClickListener {');
+  if(A.kind==='ex'){
+    L.push('            val intent = Intent(this, ProfilActivity::class.java)   // EXPLICITE');
+    L.push('            intent.apply {');
+    extrasLines(f,'                ').forEach(x=>L.push(x));
+    L.push('            }');
+    L.push('            startActivity(intent)');
+  }else if(a==='couleur'){
+    L.push('            val intent = Intent(this, CouleurActivity::class.java)  // EXPLICITE');
+    L.push('            intent.putExtra("nom", "'+f.nom+'")');
+    L.push('            choisirCouleur.launch(intent)            // au lieu de startActivity');
+  }else{
+    if(a==='share'){
+      L.push('            val intent = Intent(Intent.ACTION_SEND).apply {   // IMPLICITE');
+      L.push('                type = "text/plain"');
+      L.push('                putExtra(Intent.EXTRA_SUBJECT, "Profil de '+f.nom+'")');
+      L.push('                putExtra(Intent.EXTRA_TEXT, "'+f.nom+', '+f.age+' ans — modules : '+f.mods.join(', ')+'")');
+      L.push('            }');
+      L.push('            val chooser = Intent.createChooser(intent, "Partager via…")');
+      L.push('            try {');
+      L.push('                startActivity(chooser)');
+    }else{
+      L.push('            val intent = Intent('+A.action+', Uri.parse("'+A.data+'"))   // IMPLICITE');
+      if(a==='sms')L.push('            intent.putExtra("sms_body", "Bonjour, ici '+f.nom+' ")');
+      L.push('            try {');
+      L.push('                startActivity(intent)');
+    }
+    L.push('            } catch (e: ActivityNotFoundException) {');
+    L.push('                Toast.makeText(this, "Aucune application compatible", Toast.LENGTH_LONG).show()');
+    L.push('            }');
+  }
+  L.push('        }','    }','}');
+  return L;
+}
+function recvCode(a){
+  if(a==='profil'){
+    const s=style(),L=['class ProfilActivity : AppCompatActivity() {','    override fun onCreate(savedInstanceState: Bundle?) {','        super.onCreate(savedInstanceState)','        // … setContentView / binding …'];
+    if(s==='put'){
+      L.push('        val nom = intent.getStringExtra("nom") ?: "?"          // String?');
+      L.push('        val age = intent.getIntExtra("age", 0)                 // défaut = 0');
+      L.push('        val en2A = intent.getBooleanExtra("etudiant2A", false)');
+      L.push('        val modules = intent.getStringArrayListExtra("modules") ?: arrayListOf()');
+    }else{
+      L.push('        val extras: Bundle? = intent.extras                    // le Bundle reçu');
+      L.push('        val nom = extras?.getString("nom") ?: "?"');
+      L.push('        val age = extras?.getInt("age") ?: 0');
+      L.push('        val en2A = extras?.getBoolean("etudiant2A") ?: false');
+      L.push('        val modules = extras?.getStringArrayList("modules") ?: arrayListOf()');
+    }
+    L.push('        binding.tvBonjour.text = "Bonjour $nom ($age ans)"');
+    L.push('        binding.tvNiveau.text = if (en2A) "2e année" else "1re année"');
+    L.push('        binding.tvModules.text = modules.joinToString(", ")');
+    L.push('    }','}');return L;
+  }
+  if(a==='couleur')return['class CouleurActivity : AppCompatActivity() {','    override fun onCreate(savedInstanceState: Bundle?) {','        super.onCreate(savedInstanceState)','        val nom = intent.getStringExtra("nom")','        binding.tvTitre.text = "$nom, choisissez une couleur"','','        binding.btnVert.setOnClickListener { renvoyer("Vert", 0x2E8B3A) }','        binding.btnViolet.setOnClickListener { renvoyer("Violet", 0x7F52FF) }','        // … autres couleurs …','    }','','    private fun renvoyer(nom: String, hex: Int) {','        val reponse = Intent().apply {','            putExtra("couleur_nom", nom)','            putExtra("couleur_hex", hex)','        }','        setResult(RESULT_OK, reponse)   // le Bundle de retour','        finish()                       // ferme l\'écran → retour à MainActivity','    }','}'];
+  const A=ACTS[a];
+  return['// L\'Activity cible appartient à une AUTRE application','// (Chrome, Téléphone, Maps…). Elle lit l\'Intent ainsi :','override fun onCreate(savedInstanceState: Bundle?) {','    super.onCreate(savedInstanceState)','    val action = intent.action          // '+A.action.replace('Intent.','android.intent.action.'),'    val uri = intent.data               // '+(A.data||'null'),(a==='share'?'    val texte = intent.getStringExtra(Intent.EXTRA_TEXT)':'    val type = intent.type              // '+(A.type||'null')),'    // … affiche la page, le numéro, la carte…','}'];
+}
+function manCode(a){
+  const L=['<manifest …>'];
+  if(['web','geo','share','sms','dial'].includes(a)){
+    L.push('    <!-- Android 11+ : déclarer ce que l\'appli veut « voir » -->');
+    L.push('    <queries>');
+    L.push('        <intent>');
+    L.push('            <action android:name="'+ACTS[a].action.replace('Intent.ACTION_','android.intent.action.')+'" />');
+    if(ACTS[a].data)L.push('            <data android:scheme="'+ACTS[a].data.split(':')[0]+'" />');
+    if(ACTS[a].type)L.push('            <data android:mimeType="'+ACTS[a].type+'" />');
+    L.push('        </intent>');
+    L.push('    </queries>');
+  }
+  L.push('    <application …>');
+  L.push('        <activity android:name=".MainActivity" android:exported="true">');
+  L.push('            <intent-filter>');
+  L.push('                <action android:name="android.intent.action.MAIN" />');
+  L.push('                <category android:name="android.intent.category.LAUNCHER" />');
+  L.push('            </intent-filter>');
+  L.push('        </activity>');
+  L.push('        <!-- les Activities ciblées EXPLICITEMENT doivent être déclarées -->');
+  L.push('        <activity android:name=".ProfilActivity" />');
+  L.push('        <activity android:name=".CouleurActivity" />');
+  L.push('    </application>');
+  L.push('</manifest>');
+  return L;
+}
+function showCode(hiRe){
+  const L=lastLines[ctab];$('#code').innerHTML=codeHtml(L);
+  if(hiRe){$$('#code .l').forEach((s,i)=>{if(hiRe.test(L[i]))s.classList.add('hi')});const h=$('#code .l.hi'),pc=$('#code');if(h)pc.scrollTop=Math.max(0,h.offsetTop-pc.clientHeight/3)}
+}
+function refreshCode(a){const f=form();lastLines={send:sendCode(a,f),recv:recvCode(a),man:manCode(a)};showCode()}
+$$('#ctabs button').forEach(b=>b.onclick=()=>{ctab=b.dataset.c;$$('#ctabs button').forEach(x=>x.classList.toggle('on',x===b));showCode()});
+function hi(tab,re){ctab=tab;$$('#ctabs button').forEach(x=>x.classList.toggle('on',x.dataset.c===tab));showCode(re)}
+
+/* ---------- Bundle ---------- */
+function bundleRows(a,f){
+  if(a==='profil')return[['nom','String',f.nom,'getStringExtra'],['age','Int',f.age,'getIntExtra(…, 0)'],['etudiant2A','Boolean',f.et,'getBooleanExtra(…, false)'],['modules','ArrayList<String>','['+f.mods.join(', ')+']','getStringArrayListExtra']];
+  if(a==='couleur')return[['nom','String',f.nom,'getStringExtra']];
+  if(a==='share')return[['android.intent.extra.SUBJECT','String','Profil de '+f.nom,'EXTRA_SUBJECT'],['android.intent.extra.TEXT','String',f.nom+', '+f.age+' ans — modules : '+f.mods.join(', '),'EXTRA_TEXT']];
+  if(a==='sms')return[['sms_body','String','Bonjour, ici '+f.nom,'getStringExtra']];
+  return[];
+}
+function showBundle(a,rows,extra){
+  const A=ACTS[a]||{};
+  let h='<table><tr><th>Clé</th><th>Type</th><th>Valeur</th><th>Lecture</th></tr>';
+  h+=rows.length?rows.map(r=>'<tr class="new"><td><code>'+E(r[0])+'</code></td><td>'+E(r[1])+'</td><td><b>'+E(r[2])+'</b></td><td><code>'+E(r[3])+'</code></td></tr>').join(''):'<tr><td colspan="4" class="muted">Aucun extra : tout est dans l\'action et la data.</td></tr>';
+  h+='</table>';
+  const meta=[];if(A.kind==='ex'||A.kind==='rs')meta.push('component = <code>'+E(A.target)+'</code>');if(A.action)meta.push('action = <code>'+E(A.action)+'</code>');if(A.data)meta.push('data = <code>'+E(A.data)+'</code>');if(A.type)meta.push('type = <code>'+E(A.type)+'</code>');
+  if(meta.length)h='<p style="margin:0 0 6px;font-size:.82rem">✉️ Intent : '+meta.join(' · ')+'</p>'+h;
+  if(extra)h+=extra;
+  $('#bundle').innerHTML=h;
+}
+
+/* ---------- logcat ---------- */
+function log(tag,msg,lv){const t=new Date();const ts=String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0')+':'+String(t.getSeconds()).padStart(2,'0');const d=document.createElement('div');d.className=lv||'i';d.textContent=ts+'  '+(lv==='e'?'E':lv==='w'?'W':lv==='d'?'D':'I')+'/'+tag+': '+msg;$('#log').appendChild(d);$('#log').scrollTop=1e9}
+
+/* ---------- enveloppe animée ---------- */
+function rectIn(el){const s=$('#stage').getBoundingClientRect(),r=el.getBoundingClientRect();return{x:r.left-s.left+r.width/2,y:r.top-s.top+Math.min(r.height/2,120)}}
+async function fly(fromEl,toEl,label){
+  const env=$('#env');$('#envs').textContent=label||'';const a=rectIn(fromEl),b=rectIn(toEl);const w=env.offsetWidth/2||40,h=env.offsetHeight/2||14;
+  const dur=900*($('#o-slow').checked?2.2:1);
+  const an=env.animate([{transform:`translate(${a.x-w}px,${a.y-h}px) scale(.6)`,opacity:0},{opacity:1,offset:.15},{transform:`translate(${(a.x+b.x)/2-w}px,${Math.min(a.y,b.y)-h-50}px) scale(1.05)`,opacity:1,offset:.5},{transform:`translate(${b.x-w}px,${b.y-h}px) scale(.8)`,opacity:1,offset:.9},{transform:`translate(${b.x-w}px,${b.y-h}px) scale(.4)`,opacity:0}],{duration:dur,easing:'ease-in-out',fill:'forwards'});
+  await an.finished;
+}
+function steps(list){$('#sysst').innerHTML='<ol>'+list.map(s=>'<li>'+s+'</li>').join('')+'</ol><div class="cand" id="cand"></div>'}
+function step(i){$$('#sysst li').forEach((l,k)=>{l.classList.toggle('on',k===i);l.classList.toggle('done',k<i)})}
+function narr(t){$('#narr').innerHTML=t}
+function phoneB(title,color,html){$('#abarB').textContent=title;$('#abarB').style.background=color;$('#bodyB').innerHTML=html}
+function toastIn(scr,t){const d=document.createElement('div');d.className='toast';d.textContent=t;$(scr).appendChild(d);setTimeout(()=>d.remove(),2700)}
+function lock(on){busy=on;$$('.abtn').forEach(b=>b.disabled=on)}
+
+/* ---------- scénarios ---------- */
+async function run(a){
+  if(busy)return;lock(true);cur=a;const A=ACTS[a],f=form();refreshCode(a);$('#resA').hidden=true;
+  try{
+    const btnEl=document.querySelector('[data-act="'+a+'"]');
+    if(A.kind==='ex'||A.kind==='rs'){
+      steps(['Création de l\'Intent avec le nom de la classe cible','Ajout des extras dans le Bundle','startActivity / launch → envoi au système','Composant nommé : <b>aucune recherche</b> d\'intent-filter','Création de '+A.target+' → onCreate()','Lecture du Bundle avec getXxxExtra()']);
+      narr('<span class="tag ex">explicite</span> On nomme directement la classe <code>'+A.target+'</code>.');
+      step(0);hi('send',/Intent\(this/);log('MainActivity','clic → Intent(this, '+A.target+'::class.java)');await sleep(900);
+      step(1);hi('send',a==='profil'?/putExtra|bundle|bundleOf|"nom" to|"age" to|"etudiant2A" to|"modules" to|putString|putInt|putBoolean/:/putExtra\("nom"/);showBundle(a,bundleRows(a,f));log('MainActivity','extras : '+bundleRows(a,f).map(r=>r[0]+'='+r[2]).join(', '),'d');await sleep(1100);
+      step(2);hi('send',/startActivity\(intent\)|launch\(intent\)/);log('ActivityTaskManager','START u0 {cmp=ma.cmc.app/.'+A.target+' (has extras)}');await fly(btnEl,$('#sys'),A.target);
+      step(3);narr('<span class="tag ex">explicite</span> Le système connaît déjà la cible : il crée l\'Activity sans demander à personne.');$('#cand').innerHTML='<div class="y"><span>🎯 ma.cmc.app/.'+E(A.target)+'</span><b>✔</b></div>';await sleep(800);
+      await fly($('#sys'),$('#scrB'),'+ Bundle');
+      step(4);log(A.target,'onCreate()');
+      if(a==='profil'){
+        hi('recv',/get(String|Int|Boolean|StringArrayList)(Extra)?\(|intent\.extras/);
+        phoneB('👤 ProfilActivity','#7F52FF','<div class="applogo">👤</div><p style="text-align:center;margin:0;font-size:1.1rem"><b>Bonjour '+E(f.nom)+'</b></p><table class="kv"><tr><td>age</td><td>'+f.age+' ans</td></tr><tr><td>niveau</td><td>'+(f.et?'2ᵉ année':'1ʳᵉ année')+'</td></tr><tr><td>modules</td><td>'+E(f.mods.join(', ')||'—')+'</td></tr></table><p style="font-size:.75rem;color:#5D6573">Toutes ces valeurs viennent du Bundle envoyé par MainActivity.</p><button class="abtn ex" id="back" style="text-align:center">◀ Retour (finish)</button>');
+        step(5);log('ProfilActivity','nom='+f.nom+' age='+f.age+' etudiant2A='+f.et+' modules='+JSON.stringify(f.mods),'d');
+        narr('✅ ProfilActivity a lu le Bundle : <code>getStringExtra("nom")</code> → « '+E(f.nom)+' ».');
+        $('#back').onclick=()=>{phoneB('— aucune Activity —','#5D6573','<p style="color:#5D6573;text-align:center;margin-top:60px">ProfilActivity détruite (finish) : retour à MainActivity.</p>');log('ProfilActivity','onDestroy()','w')};
+      }else{
+        hi('recv',/getStringExtra/);step(5);
+        phoneB('🎨 CouleurActivity','#0E9AA7','<p style="margin:0"><b>'+E(f.nom)+'</b>, choisissez une couleur :</p><div class="colors">'+[['Vert','#2E8B3A'],['Violet','#7F52FF'],['Orange','#E0731E'],['Bleu','#1A73E8'],['Rose','#E91E63'],['Gris','#5D6573']].map(c=>'<button style="background:'+c[1]+'" data-c="'+c[0]+'|'+c[1]+'">'+c[0]+'</button>').join('')+'</div><button class="abtn" id="cancel" style="background:#5D6573;text-align:center">✕ Annuler (bouton Retour)</button>');
+        narr('Choisissez une couleur sur le téléphone de droite : elle sera <b>renvoyée</b> dans un Bundle de résultat.');
+        lock(false);$$('.abtn').forEach(b=>b.disabled=true);
+        await new Promise(res=>{
+          $$('#bodyB [data-c]').forEach(b=>b.onclick=async()=>{const [n,hx]=b.dataset.c.split('|');hi('recv',/putExtra\("couleur|setResult|finish/);
+            showBundle(a,[['couleur_nom','String',n,'getStringExtra'],['couleur_hex','Int','0x'+hx.slice(1).toUpperCase(),'getIntExtra(…, 0)']],'<p style="margin:6px 0 0;font-size:.8rem">↩️ Bundle de <b>retour</b> : <code>setResult(RESULT_OK, reponse)</code></p>');
+            log('CouleurActivity','setResult(RESULT_OK, {couleur_nom='+n+'}) ; finish()','d');
+            await fly($('#scrB'),$('#scrA'),'RESULT_OK');phoneB('— aucune Activity —','#5D6573','<p style="color:#5D6573;text-align:center;margin-top:60px">CouleurActivity terminée.</p>');
+            hi('send',/resultCode == RESULT_OK|getStringExtra\("couleur_nom"\)|tvResultat/);$('#resA').hidden=false;$('#resA').innerHTML='Couleur choisie : <b style="color:'+hx+'">'+n+'</b>';$('#scrA .abar').style.background=hx;
+            log('MainActivity','résultat reçu : RESULT_OK couleur='+n);narr('✅ Le lanceur <code>registerForActivityResult</code> a reçu RESULT_OK et le Bundle de retour.');res()});
+          $('#cancel').onclick=async()=>{hi('send',/else|Choix annulé/);log('CouleurActivity','Retour pressé → RESULT_CANCELED','w');await fly($('#scrB'),$('#scrA'),'RESULT_CANCELED');phoneB('— aucune Activity —','#5D6573','<p style="color:#5D6573;text-align:center;margin-top:60px">CouleurActivity terminée sans choix.</p>');toastIn('#scrA','Choix annulé');narr('↩️ Aucun résultat : <code>resultCode == RESULT_CANCELED</code>, data = null.');res()};
+        });
+      }
+    }else{
+      const none=$('#o-none').checked;const ap=none?[]:A.apps;
+      steps(['Création de l\'Intent avec une <b>action</b>'+(A.data?' et une <b>data</b> (URI)':'')+(A.type?' et un <b>type</b>':''),'startActivity → envoi au système','PackageManager compare avec les <code>&lt;intent-filter&gt;</code> ('+A.why+')',ap.length===0?'Aucun candidat → exception':ap.length===1?'Un seul candidat → ouverture directe':(A.chooser?'Plusieurs candidats → <b>chooser</b> « Partager via… »':'Plusieurs candidats → boîte « Ouvrir avec »'),'L\'Activity de l\'autre application démarre']);
+      narr('<span class="tag im">implicite</span> On ne nomme aucune classe : on décrit <b>ce qu\'on veut faire</b>.');
+      step(0);hi('send',/Intent\(Intent\.|ACTION_SEND\)|type =|EXTRA_|sms_body/);showBundle(a,bundleRows(a,f));log('MainActivity','clic → Intent('+A.action+(A.data?', '+A.data:'')+')');await sleep(900);
+      step(1);hi('send',/startActivity\((intent|chooser)\)|createChooser/);log('ActivityTaskManager','START u0 {act='+A.action.replace('Intent.ACTION_','android.intent.action.')+(A.data?' dat='+A.data.split('?')[0]:'')+(A.type?' typ='+A.type:'')+'}');await fly(btnEl,$('#sys'),A.action.replace('Intent.',''));
+      step(2);const all=Object.keys(APPS);
+      $('#cand').innerHTML=all.map(k=>'<div class="'+(ap.includes(k)?'y':'n')+'"><span>'+APPS[k].ic+' '+APPS[k].n+'</span><b>'+(ap.includes(k)?'✔':'✘')+'</b></div>').join('');
+      log('PackageManager','queryIntentActivities → '+ap.length+' résultat(s)'+(ap.length?' : '+ap.map(k=>APPS[k].n).join(', '):''),ap.length?'d':'w');await sleep(1300);
+      step(3);
+      if(!ap.length){
+        hi('send',/catch|Aucune application/);log('AndroidRuntime','android.content.ActivityNotFoundException: No Activity found to handle Intent { act='+A.action.replace('Intent.ACTION_','android.intent.action.')+' }','e');
+        $('#cand').insertAdjacentHTML('beforeend','<div class="crash">ActivityNotFoundException</div>');toastIn('#scrA','Aucune application compatible');
+        narr('⚠️ Sans <code>try/catch</code>, l\'application <b>planterait</b> ici. Le catch affiche un Toast.');
+      }else{
+        let pick=ap[0];
+        if(ap.length>1){
+          narr(A.chooser?'Le <b>chooser</b> s\'affiche à chaque fois : l\'utilisateur choisit l\'application.':'Plusieurs applications conviennent : Android demande « Ouvrir avec ».');
+          pick=await new Promise(res=>{const c=document.createElement('div');c.className='chooser';c.innerHTML='<p>'+(A.chooser?'Partager via…':'Ouvrir avec')+'</p><div class="apps">'+ap.map(k=>'<button data-k="'+k+'"><b>'+APPS[k].ic+'</b>'+APPS[k].n+'</button>').join('')+'</div>'+(A.chooser?'':'<div class="once"><span>JUSTE UNE FOIS</span><span>TOUJOURS</span></div>');$('#scrA').appendChild(c);
+            c.querySelectorAll('button').forEach(b=>b.onclick=()=>{c.remove();res(b.dataset.k)})});
+        }
+        log('ActivityTaskManager','Displayed '+APPS[pick].n.toLowerCase()+'/.MainActivity');
+        await fly($('#sys'),$('#scrB'),APPS[pick].n);step(4);hi('recv',/intent\.(action|data|type)|EXTRA_TEXT/);
+        const P=APPS[pick];let body='';
+        if(a==='web')body='<div style="background:#F1F3F4;border-radius:16px;padding:6px 10px;font-size:.78rem">🔒 www.ofppt.ma</div><div class="applogo">🎓</div><p style="text-align:center;margin:0"><b>OFPPT</b><br><small>Office de la Formation Professionnelle</small></p>';
+        else if(a==='dial')body='<div class="applogo">📞</div><p style="text-align:center;font-size:1.4rem;letter-spacing:2px;margin:0"><b>0528 00 00 00</b></p><p style="text-align:center;font-size:.78rem;color:#5D6573">Le numéro est pré-rempli : l\'utilisateur doit appuyer sur « Appeler » (ACTION_DIAL ne nécessite aucune permission, contrairement à ACTION_CALL).</p>';
+        else if(a==='sms')body='<p style="margin:0;font-size:.8rem;color:#5D6573">À : 06 12 34 56 78</p><div style="align-self:flex-end;background:#D2E3FC;border-radius:14px;padding:6px 10px;max-width:80%">Bonjour, ici '+E(f.nom)+'</div><p style="font-size:.75rem;color:#5D6573">Le texte vient de l\'extra <code>sms_body</code>.</p>';
+        else if(a==='share')body='<p style="margin:0;font-size:.8rem;color:#5D6573">Nouveau message</p><div style="background:#DCF8C6;border-radius:10px;padding:8px">'+E(f.nom+', '+f.age+' ans — modules : '+f.mods.join(', '))+'</div><p style="font-size:.75rem;color:#5D6573">Reçu via <code>EXTRA_TEXT</code>.</p>';
+        else if(a==='geo')body='<div style="height:170px;border-radius:10px;background:repeating-linear-gradient(45deg,#E8F0E3,#E8F0E3 12px,#DDE8D5 12px,#DDE8D5 24px);display:flex;align-items:center;justify-content:center;font-size:2.4rem">📍</div><p style="margin:0;text-align:center"><b>CMC Agadir</b><br><small>30.4202, -9.5982</small></p>';
+        phoneB(P.ic+' '+P.n,P.c,body);
+        narr('✅ '+P.n+' (une <b>autre</b> application) a reçu l\'Intent et lit <code>intent.data</code>'+(a==='share'||a==='sms'?' et les extras':'')+'.');
+      }
+    }
+  }catch(e){console.error(e)}
+  lock(false);
+}
+$$('.abtn[data-act]').forEach(b=>b.onclick=()=>run(b.dataset.act));
+['#o-style','#f-nom','#f-age','#f-et'].forEach(s=>$(s).addEventListener('input',()=>{if(!busy){refreshCode(cur);if(ACTS[cur].kind!=='im')showBundle(cur,bundleRows(cur,form()))}}));
+$$('.f-mod').forEach(x=>x.addEventListener('change',()=>{if(!busy)refreshCode(cur)}));
+
+/* ======================= COMPRENDRE ======================= */
+const ANAT=[
+  ['component','Composant','explicite',"La classe exacte à démarrer. S'il est renseigné, l'Intent est <b>explicite</b> : le système ignore action, catégorie et data pour choisir la cible.",'Intent(this, ProfilActivity::class.java)\n// ou : intent.setClassName(this, "ma.cmc.app.ProfilActivity")'],
+  ['action','Action','quoi faire ?',"Une chaîne qui décrit l'opération : <code>ACTION_VIEW</code> (afficher), <code>ACTION_DIAL</code> (composer), <code>ACTION_SEND</code> (partager), <code>ACTION_SENDTO</code> (envoyer à un destinataire)… C'est le cœur de l'Intent <b>implicite</b>.",'val intent = Intent(Intent.ACTION_VIEW)'],
+  ['data','Data (URI)','sur quoi ?',"L'adresse de la ressource : son <b>scheme</b> (<code>https:</code>, <code>tel:</code>, <code>geo:</code>, <code>smsto:</code>, <code>mailto:</code>) sert au système pour trouver l'application.",'intent.data = Uri.parse("tel:0528000000")'],
+  ['type','Type MIME','quel format ?',"Le format des données : <code>text/plain</code>, <code>image/*</code>, <code>application/pdf</code>. Attention : <code>setType()</code> efface la data et <code>setData()</code> efface le type → utiliser <code>setDataAndType()</code> pour les deux.",'intent.type = "text/plain"\n// les deux : intent.setDataAndType(uri, "application/pdf")'],
+  ['category','Catégorie','précision',"Informations supplémentaires sur le composant attendu : <code>DEFAULT</code> (ajoutée automatiquement par startActivity), <code>BROWSABLE</code> (ouvrable depuis un lien web), <code>LAUNCHER</code> (icône dans le menu).",'intent.addCategory(Intent.CATEGORY_BROWSABLE)'],
+  ['extras','Extras (Bundle)','les données',"Un <b>Bundle</b> de paires clé → valeur pour transmettre des données à la cible. Ils ne servent <b>pas</b> à choisir l'application.",'intent.putExtra("nom", "Yasmine")\nval nom = intent.getStringExtra("nom")'],
+  ['flags','Flags','comment ?',"Modifient la façon de lancer : <code>FLAG_ACTIVITY_CLEAR_TOP</code> (revenir à un écran existant), <code>FLAG_ACTIVITY_NEW_TASK</code> (depuis un contexte sans Activity)…",'intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP']
+];
+$('#anat').innerHTML=ANAT.map((a,i)=>'<button data-i="'+i+'">'+a[1]+'<i>'+a[2]+'</i></button>').join('');
+function anat(i){$$('#anat button').forEach((b,k)=>b.classList.toggle('on',k===i));const a=ANAT[i];$('#anex').innerHTML='<p style="margin:0 0 6px">'+a[3]+'</p><pre class="code">'+codeHtml(a[4].split('\n'))+'</pre>'}
+$$('#anat button').forEach(b=>b.onclick=()=>anat(+b.dataset.i));anat(0);
+$('#ifcode').innerHTML=codeHtml(['<!-- Une appli « Quiz » qui accepte une action personnalisée -->','<activity android:name=".ReviserActivity" android:exported="true">','    <intent-filter>','        <action android:name="com.cmc.quiz.ACTION_REVISER" />','        <category android:name="android.intent.category.DEFAULT" />','    </intent-filter>','</activity>','','<!-- Un mini-navigateur : VIEW sur les liens http/https -->','<activity android:name=".WebActivity" android:exported="true">','    <intent-filter>','        <action android:name="android.intent.action.VIEW" />','        <category android:name="android.intent.category.DEFAULT" />','        <category android:name="android.intent.category.BROWSABLE" />','        <data android:scheme="https" />','        <data android:scheme="http" />','    </intent-filter>','</activity>']);
+$('#rescode').innerHTML=codeHtml(['// Dans MainActivity','private val lanceur = registerForActivityResult(','    ActivityResultContracts.StartActivityForResult()',') { r ->','    if (r.resultCode == RESULT_OK) {','        val c = r.data?.getStringExtra("couleur_nom")','    }','}','lanceur.launch(Intent(this, CouleurActivity::class.java))','','// Dans CouleurActivity','setResult(RESULT_OK, Intent().putExtra("couleur_nom", "Vert"))','finish()']);
+
+/* ======================= ATELIER RÉSOLUTION ======================= */
+const FILTERS=[
+  {k:'chrome',f:[{a:['android.intent.action.VIEW'],c:['DEFAULT','BROWSABLE'],s:['http','https']}]},
+  {k:'firefox',f:[{a:['android.intent.action.VIEW'],c:['DEFAULT','BROWSABLE'],s:['http','https']}]},
+  {k:'phone',f:[{a:['android.intent.action.DIAL','android.intent.action.VIEW'],c:['DEFAULT','BROWSABLE'],s:['tel']}]},
+  {k:'msg',f:[{a:['android.intent.action.SENDTO'],c:['DEFAULT'],s:['sms','smsto']},{a:['android.intent.action.SEND'],c:['DEFAULT'],m:['text/plain','image/*']}]},
+  {k:'wa',f:[{a:['android.intent.action.SEND'],c:['DEFAULT'],m:['text/plain','image/*']},{a:['android.intent.action.SENDTO'],c:['DEFAULT'],s:['smsto']}]},
+  {k:'gmail',f:[{a:['android.intent.action.SEND'],c:['DEFAULT'],m:['text/plain','image/*','application/pdf']},{a:['android.intent.action.SENDTO'],c:['DEFAULT'],s:['mailto']}]},
+  {k:'maps',f:[{a:['android.intent.action.VIEW'],c:['DEFAULT','APP_MAPS'],s:['geo']}]},
+  {k:'pdf',f:[{a:['android.intent.action.VIEW'],c:['DEFAULT'],m:['application/pdf']}]},
+  {k:'gal',f:[{a:['android.intent.action.VIEW'],c:['DEFAULT'],m:['image/*']}]},
+  {k:'quiz',f:[{a:['com.cmc.quiz.ACTION_REVISER'],c:['DEFAULT']}]}
+];
+APPS.pdf={n:'Lecteur PDF',ic:'📕',c:'#C62828'};APPS.gal={n:'Galerie',ic:'🖼️',c:'#6A1B9A'};APPS.quiz={n:'Quiz CMC',ic:'🧠',c:'#7F52FF'};
+const PRESETS=[['🌐 site web','Intent.ACTION_VIEW','https://www.ofppt.ma','',''],['📞 numéro','Intent.ACTION_DIAL','tel:0528000000','',''],['✉️ e-mail','Intent.ACTION_SENDTO','mailto:formateur@cmc.ma','',''],['📤 texte','Intent.ACTION_SEND','','text/plain',''],['📕 PDF','Intent.ACTION_VIEW','','application/pdf',''],['📍 carte','Intent.ACTION_VIEW','geo:30.42,-9.59','',''],['🧠 action perso','com.cmc.quiz.ACTION_REVISER','','',''],['❌ piège','Intent.ACTION_DIAL','https://www.ofppt.ma','','']];
+$('#presets').innerHTML=PRESETS.map((p,i)=>'<button type="button" class="tbtn" style="background:var(--card);border:1px solid var(--rule);border-radius:16px;padding:4px 12px;cursor:pointer" data-p="'+i+'">'+p[0]+'</button>').join('');
+$$('#presets button').forEach(b=>b.onclick=()=>{const p=PRESETS[+b.dataset.p];$('#r-act').value=p[1];$('#r-data').value=p[2];$('#r-type').value=p[3];$('#r-cat').value=p[4];resolve()});
+function mimeOk(want,decl){return decl.some(d=>d===want||(d.endsWith('/*')&&want.split('/')[0]===d.split('/')[0]))}
+function resolve(){
+  const act=$('#r-act').value,full=act.startsWith('Intent.')?act.replace('Intent.ACTION_','android.intent.action.'):act;
+  const data=$('#r-data').value.trim(),type=$('#r-type').value,cat=$('#r-cat').value;
+  const scheme=data?(data.split(':')[0]||'').toLowerCase():'';
+  const cats=['DEFAULT'].concat(cat?[cat.split('.').pop()]:[]);
+  const L=['val intent = Intent('+act+')'];
+  if(data&&type)L.push('intent.setDataAndType(Uri.parse("'+data+'"), "'+type+'")');else if(data)L.push('intent.data = Uri.parse("'+data+'")');else if(type)L.push('intent.type = "'+type+'"');
+  if(cat)L.push('intent.addCategory("'+cat+'")');
+  L.push('// startActivity ajoute automatiquement CATEGORY_DEFAULT');
+  L.push('val candidats = packageManager.queryIntentActivities(intent, 0)');
+  $('#r-code').innerHTML=codeHtml(L);
+  const res=FILTERS.map(F=>{let best=null;F.f.forEach(fl=>{
+      const okA=fl.a.includes(full);
+      const okC=cats.every(c=>fl.c.includes(c));
+      let okD;const hasS=!!(fl.s&&fl.s.length),hasM=!!(fl.m&&fl.m.length);
+      if(!hasS&&!hasM)okD=!data&&!type;
+      else{const sOk=hasS?(scheme&&fl.s.includes(scheme)):!scheme||['content','file'].includes(scheme);const mOk=hasM?(type&&mimeOk(type,fl.m)):!type;okD=sOk&&mOk}
+      const r={okA,okC,okD,fl};if(!best||(okA+okC+okD)>(best.okA+best.okC+best.okD))best=r});
+    return {k:F.k,ok:best.okA&&best.okC&&best.okD,r:best}});
+  const yes=res.filter(x=>x.ok);
+  $('#verdict').className='verdict '+(yes.length?yes.length>1?'m':'o':'z');
+  $('#verdict').innerHTML=!yes.length?'❌ Aucune application : startActivity lève <code>ActivityNotFoundException</code> (à intercepter avec try/catch).':yes.length===1?'✅ Une seule application : elle s\'ouvre directement ('+APPS[yes[0].k].ic+' '+APPS[yes[0].k].n+').':'🟠 '+yes.length+' applications : Android affiche « Ouvrir avec » (ou utilisez createChooser) : '+yes.map(x=>APPS[x.k].ic+' '+APPS[x.k].n).join(', ');
+  $('#apps2').innerHTML=res.sort((a,b)=>b.ok-a.ok).map(x=>{const fl=x.r.fl,P=APPS[x.k];
+    const xml=['<intent-filter>'].concat(fl.a.map(a=>'  <action name="'+a.replace('android.intent.action.','…')+'"/>'),fl.c.map(c=>'  <category name="…'+c+'"/>'),(fl.s||[]).map(s=>'  <data scheme="'+s+'"/>'),(fl.m||[]).map(m=>'  <data mimeType="'+m+'"/>'),['</intent-filter>']).join('\n');
+    return '<div class="app2 '+(x.ok?'y':'n')+'"><b>'+P.ic+' '+P.n+'</b> '+(x.ok?'<span class="tag" style="background:var(--hl-soft);color:var(--hl-d)">candidate</span>':'')+'<pre>'+E(xml)+'</pre><div class="why"><span>'+(x.r.okA?'✔':'✘')+' action</span><span>'+(x.r.okC?'✔':'✘')+' catégorie</span><span>'+(x.r.okD?'✔':'✘')+' data/type</span></div></div>'}).join('');
+}
+['#r-act','#r-data','#r-type','#r-cat'].forEach(s=>$(s).addEventListener('input',resolve));resolve();
+
+/* ======================= QUIZ ======================= */
+const QUIZ=[
+ {q:'Quel code crée un Intent EXPLICITE ?',o:['Intent(Intent.ACTION_VIEW, uri)','Intent(this, ProfilActivity::class.java)','Intent.createChooser(intent, "…")','Intent(Intent.ACTION_SEND)'],a:1,e:'On nomme la classe cible : le système ne cherche pas d\'intent-filter.'},
+ {q:'Dans la cible, comment lire un Int envoyé avec putExtra("age", 20) ?',o:['intent.getIntExtra("age")','intent.getStringExtra("age").toInt()','intent.getIntExtra("age", 0)','intent.extras.age'],a:2,e:'Les types primitifs exigent une valeur par défaut, retournée si la clé n\'existe pas.'},
+ {q:'Que se passe-t-il si aucune application ne gère un Intent implicite ?',o:['Rien, l\'appel est ignoré','Android ouvre le Play Store','startActivity lève ActivityNotFoundException','L\'Intent devient explicite'],a:2,e:'Sans try/catch l\'application plante : on intercepte l\'exception (et on déclare <queries> sur Android 11+ si on teste avant).'},
+ {q:'Quel élément sert à CHOISIR l\'application pour un Intent implicite ?',o:['Les extras du Bundle','L\'action, la data/type et les catégories','Le nom de la classe','Les flags'],a:1,e:'Les extras transportent des données mais n\'interviennent pas dans la résolution.'},
+ {q:'Pour composer un numéro SANS permission particulière, on utilise :',o:['ACTION_CALL','ACTION_DIAL','ACTION_SENDTO','ACTION_VIEW avec https:'],a:1,e:'ACTION_DIAL pré-remplit le numéro ; ACTION_CALL appelle directement et exige la permission CALL_PHONE.'},
+ {q:'Quelle API moderne remplace startActivityForResult ?',o:['onActivityResult()','registerForActivityResult(…)','startActivity(intent, RESULT_OK)','setResult()'],a:1,e:'On enregistre un lanceur avec un contrat (StartActivityForResult) puis on appelle launch(intent).'},
+ {q:'Dans l\'Activity appelée, comment renvoyer une donnée ?',o:['startActivity(Intent(this, MainActivity::class.java))','setResult(RESULT_OK, intentAvecExtras) puis finish()','return bundle','intent.putExtra(…) seulement'],a:1,e:'setResult place le code et le Bundle de retour ; finish() ferme l\'écran et déclenche le callback.'},
+ {q:'Avec bundleOf("nom" to "Ali") puis putExtras(…), comment lire la valeur ?',o:['intent.getStringExtra("nom") ou intent.extras?.getString("nom")','intent.getBundle("nom")','bundleOf.get("nom")','Impossible, il faut putExtra'],a:0,e:'putExtras copie les paires dans les extras de l\'Intent : les deux lectures fonctionnent.'},
+ {q:'Pourquoi utiliser Intent.createChooser() pour un partage ?',o:['Pour rendre l\'Intent explicite','Pour afficher la liste des applis à chaque fois, même si un choix « Toujours » existe','Pour ajouter des extras','Pour éviter le Manifest'],a:1,e:'Le chooser laisse l\'utilisateur choisir à chaque partage et porte un titre (« Partager via… »).'},
+ {q:'Que faut-il mettre dans un Bundle pour une photo de 5 Mo ?',o:['Le tableau d\'octets de l\'image','Le Bitmap entier','Son URI (ou un identifiant)','Rien n\'est possible'],a:2,e:'Le Bundle est limité (~1 Mo, TransactionTooLargeException) : on transmet une référence, pas la donnée lourde.'}
+];
+let score=0,answered=0;
+$('#quiz').innerHTML=QUIZ.map((q,i)=>'<div class="q" data-q="'+i+'"><p>'+(i+1)+'. '+E(q.q)+'</p><div class="o">'+q.o.map((o,j)=>'<button type="button" data-j="'+j+'">'+E(o)+'</button>').join('')+'</div><p class="e" hidden></p></div>').join('');
+$('#quiz').addEventListener('click',ev=>{const b=ev.target.closest('button');if(!b)return;const q=b.closest('.q');if(q.dataset.done)return;q.dataset.done=1;const i=+q.dataset.q,j=+b.dataset.j,ok=j===QUIZ[i].a;b.classList.add(ok?'r':'w');if(!ok)q.querySelectorAll('button')[QUIZ[i].a].classList.add('r');const e=q.querySelector('.e');e.hidden=false;e.textContent=(ok?'✔ Exact. ':'✘ ')+QUIZ[i].e;answered++;if(ok)score++;$('#score').textContent='Score : '+score+' / '+answered+(answered===QUIZ.length?(score>=8?' — excellent !':score>=6?' — bien, revoyez le simulateur pour les points manqués.':' — rejouez le simulateur et l\'atelier puis réessayez.'):'')});
+
+
+/* GoumihEdu : export du contenu en blocs pour le supplément PDF / publication */
+window.GE_SUPPLEMENT=function(){var B=[];var tx=function(h){var d=document.createElement('div');d.innerHTML=String(h||'');return d.textContent.replace(/\s+/g,' ').trim()};
+  B.push({t:'h1',text:'Android — Intents explicites, implicites & Bundle'});
+  B.push({t:'p',text:'Un Intent est un message envoyé au système Android pour démarrer une Activity. Explicite : on nomme la classe cible. Implicite : on décrit une action (et une data / un type) et Android cherche l\'application capable de la faire grâce aux intent-filters. Le Bundle transporte les données (extras).'});
+  B.push({t:'h2',text:'1. Anatomie d\'un Intent'});ANAT.forEach(function(a){B.push({t:'h3',text:a[1]+' — '+a[2]});B.push({t:'p',text:tx(a[3])});B.push({t:'code',text:a[4]})});
+  B.push({t:'h2',text:'2. Explicite ou implicite ?'});B.push({t:'table',rows:[['','Explicite','Implicite'],['Cible','Une classe précise : ProfilActivity::class.java','Une action (+ data, type) : ACTION_VIEW'],['Qui choisit ?','Le développeur','Le système, via les intent-filters'],['Usage','Naviguer entre les écrans de son application','Utiliser une autre application (navigateur, téléphone, SMS, partage, carte)'],['Si personne ne répond','—','ActivityNotFoundException → try/catch'],['Plusieurs candidats','—','« Ouvrir avec » ou Intent.createChooser()']]});
+  B.push({t:'h2',text:'3. Intent explicite avec Bundle'});B.push({t:'code',text:sendCode('profil',{nom:'Yasmine',age:20,et:true,mods:['Kotlin','Android']}).join('\n')});B.push({t:'h3',text:'Lecture dans ProfilActivity'});B.push({t:'code',text:recvCode('profil').join('\n')});
+  B.push({t:'table',rows:[['Type','Envoyer','Recevoir'],['String','putExtra("nom", nom)','getStringExtra("nom")'],['Int','putExtra("age", 20)','getIntExtra("age", 0)'],['Boolean','putExtra("ok", true)','getBooleanExtra("ok", false)'],['ArrayList<String>','putStringArrayListExtra("mods", liste)','getStringArrayListExtra("mods")'],['Bundle entier','putExtras(bundle) / bundleOf(…)','intent.extras?.getString("nom")']]});
+  B.push({t:'note',text:'Un Bundle est limité (~1 Mo) : on transmet un identifiant ou une URI, jamais une image. Déclarez les clés en constantes (const val EXTRA_NOM = "nom").'});
+  B.push({t:'h2',text:'4. Récupérer un résultat'});B.push({t:'code',text:sendCode('couleur',{nom:'Yasmine',age:20,et:true,mods:[]}).join('\n')});B.push({t:'code',text:recvCode('couleur').join('\n')});
+  B.push({t:'h2',text:'5. Intents implicites courants'});['web','dial','sms','share','geo'].forEach(function(k){var A=ACTS[k];B.push({t:'h3',text:A.action+(A.data?' — '+A.data:'')+(A.type?' — '+A.type:'')});B.push({t:'code',text:sendCode(k,{nom:'Yasmine',age:20,et:true,mods:['Kotlin']}).join('\n')})});
+  B.push({t:'h2',text:'6. Le Manifest'});B.push({t:'code',text:manCode('web').join('\n')});
+  B.push({t:'h2',text:'7. Quiz'});B.push({t:'list',items:QUIZ.map(function(q){return q.q+' → '+q.o[q.a]})});
+  return B};
+/* ---------- démarrage ---------- */
+setInterval(()=>{const t=new Date();$('#clock').textContent=String(t.getHours()).padStart(2,'0')+':'+String(t.getMinutes()).padStart(2,'0')},1000);
+refreshCode('profil');log('MainActivity','onCreate() — choisissez un bouton pour envoyer un Intent.');
+})();
+</script>
+</body>
+</html>
