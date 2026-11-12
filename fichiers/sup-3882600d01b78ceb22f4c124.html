@@ -1,0 +1,1447 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta name="ge-sup" content="eyJ0aXRyZSI6IkRhcnQg4oCUIFN1cHBsw6ltZW50IDMgOiBBc3luY2hyb25lICYgU3RyZWFtcyIsInRvb2wiOiJkYXJ0MyIsImRlYnV0IjoxNzk0NDgzNzIwMDAwLCJmaW4iOjE3OTUwODg1MjAwMDAsInYiOjE3OTQ0ODM3NDQyNTR9">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Supplément 3 : asynchrone, Streams et concurrence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0A4D68; --navy-2:#0d6186; --orange:#F97316; --orange-soft:#FFF1E6;
+  --paper:#F3F7F9; --surface:#FFFFFF; --ink:#13232B; --muted:#52707E; --line:#D3E0E6;
+  --code-bg:#06344A; --code-ink:#E4F0F5; --code-line:#0F4A63;
+  --ok:#15803D; --ok-soft:#E7F6EC; --err:#B91C1C; --err-soft:#FDECEC;
+  --link:#0A4D68; --chip:#E6EFF3;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#081820; --surface:#0E2530; --ink:#E2EDF2; --muted:#8EA9B6; --line:#1D3B48;
+    --code-bg:#04222F; --code-line:#0E3A4D; --orange-soft:#3A2312; --ok-soft:#0F2E1C; --err-soft:#3A1414;
+    --link:#6CC3E8; --chip:#163542; --navy-2:#2b8bb5;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#081820; --surface:#0E2530; --ink:#E2EDF2; --muted:#8EA9B6; --line:#1D3B48;
+  --code-bg:#04222F; --code-line:#0E3A4D; --orange-soft:#3A2312; --ok-soft:#0F2E1C; --err-soft:#3A1414;
+  --link:#6CC3E8; --chip:#163542; --navy-2:#2b8bb5;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 72px);scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:17px;line-height:1.6}
+a{color:var(--link)}
+:focus-visible{outline:3px solid var(--orange);outline-offset:2px;border-radius:4px}
+code,kbd{font-family:var(--f-mono);font-size:.88em}
+p code, li code, td code, dd code, .note code{background:var(--chip);padding:.08em .35em;border-radius:4px}
+
+/* ---------- top bar ---------- */
+.topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--navy);color:#fff;display:flex;align-items:center;gap:14px;padding:10px 18px;}
+.topbar .brand{font-family:var(--f-display);font-weight:700;font-size:1.05rem;letter-spacing:-.01em;white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.topbar .progress{flex:none}
+.topbar .brand span{color:#FDBA74}
+.topbar .grow{flex:1 1 0;min-width:0}
+.progress{display:flex;align-items:center;gap:10px;font-size:.9rem}
+.progress .bar{width:140px;height:8px;border-radius:8px;background:rgba(255,255,255,.18);overflow:hidden}
+.progress .bar i{display:block;height:100%;width:0;background:var(--orange);transition:width .4s}
+.menu-btn{display:none;background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:8px;padding:6px 12px;font:inherit;font-size:.9rem;cursor:pointer}
+
+/* ---------- layout ---------- */
+.layout{display:grid;grid-template-columns:270px minmax(0,1fr);max-width:1240px;margin:0 auto}
+nav.toc{position:sticky;top:calc(env(safe-area-inset-top,0px) + 52px);align-self:start;height:calc(100vh - 52px);overflow:auto;padding:26px 14px 40px 20px;border-right:1px solid var(--line)}
+nav.toc h2{font-family:var(--f-display);font-size:.95rem;margin:0 0 10px 8px;color:var(--muted);font-weight:600}
+nav.toc ol{list-style:none;margin:0;padding:0;counter-reset:toc}
+nav.toc li a{display:flex;gap:10px;align-items:baseline;padding:6px 8px;border-radius:8px;text-decoration:none;color:var(--ink);font-size:.93rem;line-height:1.35}
+nav.toc li a .n{font-family:var(--f-mono);font-size:.75rem;color:var(--muted);min-width:1.6em}
+nav.toc li a .t{flex:1}
+nav.toc li a .ck{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--line);flex:none;align-self:center}
+nav.toc li a.done .ck{background:var(--ok);border-color:var(--ok);box-shadow:inset 0 0 0 3px var(--surface)}
+nav.toc li a:hover{background:var(--chip)}
+nav.toc li a.active{background:var(--chip);font-weight:700}
+nav.toc li a.active .n{color:var(--orange)}
+nav.toc .sep{height:1px;background:var(--line);margin:10px 8px}
+
+main{padding:0 clamp(16px,4vw,56px) 80px;min-width:0}
+.wrap{max-width:780px}
+
+/* ---------- hero ---------- */
+.hero{padding:48px 0 30px;border-bottom:1px solid var(--line);margin-bottom:10px}
+.hero .kicker{color:var(--muted);font-size:.95rem;margin:0 0 6px}
+.hero h1{font-family:var(--f-display);font-weight:800;font-size:clamp(2.3rem,6vw,3.9rem);line-height:1.02;letter-spacing:-.035em;margin:0 0 16px;color:var(--navy)}
+:root[data-theme="dark"] .hero h1{color:#E2EDF2}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .hero h1{color:#E2EDF2}}
+.hero h1 .semi{display:block;font-weight:500;font-size:.48em;letter-spacing:-.01em;color:var(--muted);margin-top:8px}
+.hero p.intro{max-width:62ch;margin:0 0 24px}
+
+/* ---------- code blocks ---------- */
+.code{position:relative;background:var(--code-bg);color:var(--code-ink);border-radius:12px;margin:14px 0 18px;overflow:hidden}
+.code .bar{display:flex;align-items:center;gap:8px;padding:7px 12px 7px 14px;border-bottom:1px solid var(--code-line);font-size:.8rem;color:#9cc0d0}
+.code .bar .file{font-family:var(--f-mono)}
+.code .bar .grow{flex:1}
+.code .bar button{background:transparent;border:1px solid #2a6580;color:#cfe5ee;border-radius:6px;font:inherit;font-size:.78rem;padding:2px 9px;cursor:pointer}
+.code .bar button:hover{border-color:var(--orange);color:#fff}
+.code pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--f-mono);font-size:.86rem;line-height:1.6;tab-size:2}
+.tk-c{color:#7FA6B7;font-style:italic}
+.tk-s{color:#B5F0CF}
+.tk-i{color:#FDBA74}
+.tk-k{color:#FFB37A;font-weight:600}
+.tk-t{color:#9CCBFF}
+.tk-n{color:#F9D88B}
+.tk-f{color:#E7D4FF}
+
+/* ---------- chapters ---------- */
+section.chap{padding:46px 0 26px;border-bottom:1px solid var(--line)}
+.chap-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+.chap-head .num{font-family:var(--f-display);font-weight:800;font-size:2.6rem;line-height:1;color:var(--orange);letter-spacing:-.04em;min-width:1.4em}
+.chap-head h2{font-family:var(--f-display);font-weight:700;font-size:clamp(1.55rem,3.4vw,2.05rem);letter-spacing:-.02em;line-height:1.15;margin:0;flex:1;min-width:12ch}
+.chap-head .pages{font-size:.85rem;color:var(--muted);white-space:nowrap}
+p.lead{font-size:1.08rem;color:var(--ink);max-width:66ch;margin:8px 0 18px}
+h3{font-family:var(--f-display);font-weight:700;font-size:1.22rem;letter-spacing:-.01em;margin:30px 0 8px}
+h4{font-size:1rem;margin:20px 0 6px}
+section p,section li{max-width:70ch}
+ul.plain{padding-left:1.2em}
+ul.plain li{margin:4px 0}
+
+/* tables */
+.tbl{overflow-x:auto;margin:14px 0 18px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.93rem}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:700;background:var(--chip);font-size:.88rem}
+tr:last-child td{border-bottom:0}
+td.y{color:var(--ok);font-weight:700}
+td.no{color:var(--err);font-weight:700}
+
+/* callouts */
+.note{border-left:4px solid var(--navy-2);background:var(--surface);padding:12px 16px;border-radius:0 10px 10px 0;margin:16px 0}
+.note.keep{border-left-color:var(--orange);background:var(--orange-soft)}
+.note.trap{border-left-color:var(--err);background:var(--err-soft)}
+.note b.h{display:block;font-family:var(--f-display);margin-bottom:4px}
+.note ul{margin:4px 0;padding-left:1.15em}
+.note p{margin:4px 0}
+
+/* ---------- interactive lab ---------- */
+.lab{background:var(--surface);border:1px solid var(--line);border-radius:14px;margin:20px 0 22px;overflow:hidden}
+.lab > header{display:flex;gap:10px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);background:linear-gradient(0deg,transparent,transparent),var(--surface)}
+.lab > header .dot{width:10px;height:10px;border-radius:50%;background:var(--orange);flex:none}
+.lab > header h4{margin:0;font-family:var(--f-display);font-size:1.02rem}
+.lab > header small{color:var(--muted);margin-left:auto;font-size:.82rem}
+.lab .body{padding:16px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+.row label{font-size:.88rem;color:var(--muted)}
+input[type=text],input[type=number],select{font:inherit;font-size:.95rem;padding:7px 10px;border-radius:8px;border:1px solid var(--line);background:var(--paper);color:var(--ink);min-width:0}
+input.mono,select.mono{font-family:var(--f-mono);font-size:.88rem}
+.btn{font:inherit;font-size:.86rem;font-family:var(--f-mono);padding:6px 11px;border-radius:8px;border:1px solid var(--line);background:var(--paper);color:var(--ink);cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--navy-2)}
+.btn.primary{background:var(--orange);border-color:var(--orange);color:#fff;font-family:var(--f-body);font-weight:700;font-size:.92rem;padding:8px 16px}
+.btn.primary:hover{filter:brightness(.95)}
+.btn.ghost{font-family:var(--f-body)}
+.btn[aria-pressed="true"]{background:var(--navy);border-color:var(--navy);color:#fff}
+.console{background:var(--code-bg);color:var(--code-ink);font-family:var(--f-mono);font-size:.85rem;border-radius:10px;padding:12px 14px;min-height:46px;white-space:pre-wrap;word-break:break-word;margin-top:10px}
+.console .p{color:#7FA6B7}
+.console .ok{color:#86EFAC}
+.console .er{color:#FCA5A5}
+.console .hl{color:#FDBA74}
+.console .cmd{color:#9CCBFF}
+.out-type{font-family:var(--f-mono);font-size:.82rem;color:var(--muted)}
+
+/* list boxes */
+.boxes{display:flex;flex-wrap:wrap;gap:6px;min-height:58px;padding:8px 0}
+.box{display:flex;flex-direction:column;align-items:center;gap:2px}
+.box .v{font-family:var(--f-mono);font-size:.88rem;padding:7px 11px;border-radius:8px;background:var(--chip);border:1.5px solid transparent;min-width:2.4em;text-align:center}
+.box .i{font-family:var(--f-mono);font-size:.7rem;color:var(--muted)}
+.box.new .v{border-color:var(--orange);background:var(--orange-soft)}
+.box.dim .v{opacity:.35;text-decoration:line-through}
+.box.keep .v{border-color:var(--ok);background:var(--ok-soft)}
+.empty-hint{color:var(--muted);font-size:.9rem;font-style:italic;align-self:center}
+.arrow-row{font-family:var(--f-mono);color:var(--muted);font-size:.85rem;margin:2px 0}
+
+/* map table */
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-family:var(--f-mono);font-size:.88rem;margin:6px 0}
+.kv .k{background:var(--navy);color:#fff;padding:4px 10px;border-radius:6px;text-align:center}
+.kv .val{background:var(--chip);padding:4px 10px;border-radius:6px}
+.kv .flash{outline:2px solid var(--orange)}
+
+/* inline checks */
+.check{margin:22px 0 8px;padding:14px 16px;border:1px dashed var(--navy-2);border-radius:12px}
+.check .q{font-weight:700;margin:0 0 10px}
+.check .opts{display:flex;flex-direction:column;gap:6px}
+.check .opts button{text-align:left;font:inherit;font-size:.95rem;padding:8px 12px;border-radius:9px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.check .opts button:hover{border-color:var(--navy-2)}
+.check .opts button.right{border-color:var(--ok);background:var(--ok-soft)}
+.check .opts button.wrong{border-color:var(--err);background:var(--err-soft)}
+.check .explain{display:none;margin:10px 0 0;font-size:.95rem}
+.check.answered .explain{display:block}
+
+.done-toggle{display:flex;align-items:center;gap:10px;margin:22px 0 0;font-weight:700;cursor:pointer;user-select:none;width:max-content;max-width:100%;padding:8px 14px 8px 10px;border-radius:999px;border:1.5px solid var(--line);background:var(--surface)}
+.done-toggle input{width:20px;height:20px;accent-color:var(--ok)}
+.done-toggle:has(input:checked){border-color:var(--ok);background:var(--ok-soft);color:var(--ok)}
+
+/* tabs / segmented */
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;flex-wrap:wrap}
+.seg button{font:inherit;font-size:.9rem;border:0;background:var(--surface);color:var(--ink);padding:7px 14px;cursor:pointer;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-selected="true"]{background:var(--navy);color:#fff}
+.tabpanel[hidden]{display:none}
+
+/* features dl */
+dl.feat{display:grid;grid-template-columns:1fr 1fr;gap:4px 28px;margin:14px 0}
+dl.feat div{padding:10px 0;border-top:2px solid var(--line)}
+dl.feat dt{font-weight:700;font-family:var(--f-display);font-size:1.02rem}
+dl.feat dd{margin:2px 0 0;color:var(--ink);font-size:.95rem}
+@media (max-width:640px){dl.feat{grid-template-columns:1fr}}
+
+/* pipeline */
+.pipe{display:flex;align-items:stretch;gap:0;flex-wrap:wrap;margin:12px 0}
+.pipe .st{flex:1 1 140px;padding:10px 12px;background:var(--chip);border-radius:10px;font-size:.9rem;position:relative;margin:4px 18px 4px 0}
+.pipe .st b{display:block;font-family:var(--f-display)}
+.pipe .st:not(:last-child)::after{content:"";position:absolute;right:-14px;top:50%;border:7px solid transparent;border-left-color:var(--orange);transform:translateY(-50%)}
+
+/* highlighted code lines (switch lab) */
+.lines{background:var(--code-bg);color:var(--code-ink);border-radius:10px;padding:10px 0;font-family:var(--f-mono);font-size:.85rem;overflow-x:auto}
+.lines div{padding:1px 16px;white-space:pre;border-left:3px solid transparent}
+.lines div.on{background:rgba(249,115,22,.30);border-left-color:var(--orange)}
+.lines div.skip{opacity:.45}
+
+/* validator */
+.calls{display:flex;flex-direction:column;gap:8px}
+.call{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--paper)}
+.call code{flex:1;min-width:180px;background:transparent!important;font-size:.9rem}
+.call .fb{flex-basis:100%;font-size:.88rem;display:none}
+.call.r{border-color:var(--ok)} .call.r .fb{display:block;color:var(--ok)}
+.call.w{border-color:var(--err)} .call.w .fb{display:block;color:var(--err)}
+
+/* terminal */
+.term{background:#031A24;color:#D4E8F0;font-family:var(--f-mono);font-size:.88rem;border-radius:12px;padding:14px;min-height:170px}
+.term .ln{white-space:pre-wrap}
+.term .in{color:#FDBA74}
+.term form{display:flex;gap:8px;margin-top:6px}
+.term input{flex:1;background:#06283A;border:1px solid #1d4e66;color:#fff;font-family:var(--f-mono);border-radius:6px;padding:6px 8px}
+
+/* record anatomy */
+.rec{font-family:var(--f-mono);font-size:1.05rem;display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin:10px 0}
+.rec button{font:inherit;font-size:1rem;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:5px 10px;cursor:pointer}
+.rec button.pos{border-color:var(--navy-2)}
+.rec button.named{border-color:var(--orange)}
+.rec button[aria-pressed="true"]{background:var(--navy);color:#fff}
+
+/* quiz */
+.quiz{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px}
+.quiz .qn{color:var(--muted);font-size:.9rem}
+.quiz .qt{font-family:var(--f-display);font-size:1.25rem;font-weight:700;margin:6px 0 14px;line-height:1.3}
+.quiz pre{background:var(--code-bg);color:var(--code-ink);font-family:var(--f-mono);font-size:.86rem;padding:12px 14px;border-radius:10px;overflow-x:auto;margin:0 0 14px}
+.score-big{font-family:var(--f-display);font-weight:800;font-size:3.4rem;color:var(--orange);line-height:1}
+
+/* memo */
+.memo td:first-child{white-space:nowrap;font-weight:700}
+.memo td code{white-space:nowrap}
+
+footer.end{padding:30px 0;color:var(--muted);font-size:.9rem}
+
+/* hero console */
+.hero-code{background:var(--code-bg);color:var(--code-ink);border-radius:14px;overflow:hidden;max-width:620px}
+.hero-code pre{margin:0;padding:16px 18px;font-family:var(--f-mono);font-size:.92rem;line-height:1.7;overflow-x:auto}
+.hero-code input{font-family:var(--f-mono);font-size:.92rem;background:#0b4562;border:1px dashed #f9a25e;color:#B5F0CF;border-radius:5px;padding:1px 6px;width:13ch}
+.hero-code .run{display:flex;align-items:center;gap:12px;padding:10px 18px;border-top:1px solid var(--code-line)}
+.hero-code .run .out{font-family:var(--f-mono);font-size:.88rem;color:#86EFAC;flex:1;min-height:1.4em}
+.caret{display:inline-block;width:.55em;height:1.05em;background:var(--orange);vertical-align:-2px;animation:blink 1.1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+
+@media (max-width:900px){
+  .layout{grid-template-columns:1fr}
+  nav.toc{position:fixed;inset:calc(env(safe-area-inset-top,0px) + 52px) auto 0 0;width:min(320px,86vw);height:auto;background:var(--surface);z-index:30;transform:translateX(-105%);transition:transform .25s;box-shadow:0 0 0 100vmax rgba(0,0,0,0);border-right:1px solid var(--line)}
+  nav.toc.open{transform:none;box-shadow:0 0 0 100vmax rgba(0,0,0,.35)}
+  .menu-btn{display:inline-block}
+  .progress .bar{width:70px}
+  .topbar .brand{font-size:.95rem}
+}
+@media (max-width:480px){.progress .lbl{display:none} body{font-size:16px}}
+@media print{
+  .topbar,nav.toc,.lab,.check,.done-toggle,.hero-code,.quiz-wrap{display:none!important}
+  .layout{display:block} body{background:#fff;color:#000}
+  section.chap{break-inside:auto}
+}
+
+/* supplément 3 : animations */
+.fz{display:flex;align-items:center;gap:12px;margin:10px 0}
+.fzspin{width:26px;height:26px;border:4px solid var(--line);border-top-color:var(--orange);border-radius:50%;animation:spin 1s linear infinite;flex:none}
+.fzspin.stuck{animation-play-state:paused;border-top-color:var(--err)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.fzbar{flex:1;height:10px;border-radius:6px;background:var(--chip);overflow:hidden}.fzbar i{display:block;height:100%;width:0;background:var(--ok)}
+.elq{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:10px;margin-bottom:10px}@media(max-width:700px){.elq{grid-template-columns:1fr}}
+.elbox{border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--paper);min-height:120px}
+.elt{font-family:var(--f-display);font-weight:700;font-size:.9rem;margin-bottom:6px;color:var(--muted)}
+.elitems{display:flex;flex-direction:column;gap:4px}
+.elchip{font-family:var(--f-mono);font-size:.78rem;padding:4px 8px;border-radius:7px;background:var(--surface);border:1.5px solid var(--line);transition:all .3s}
+.elchip.done{opacity:.4}.elchip.on{border-color:var(--orange);background:var(--orange-soft);transform:translateX(3px)}.elchip.next{border-color:var(--navy-2);box-shadow:0 0 0 2px rgba(13,97,134,.2)}
+.elempty{color:var(--muted);font-size:.85rem;font-style:italic}
+.ftline{display:flex;align-items:center;gap:8px;margin:12px 0;font-family:var(--f-mono);font-size:.85rem}
+.ftst{padding:5px 10px;border-radius:999px;border:1.5px solid var(--line);background:var(--surface);white-space:nowrap}.ftst.ok{border-color:var(--ok);background:var(--ok-soft);color:var(--ok)}.ftst.err{border-color:var(--err);background:var(--err-soft);color:var(--err)}
+.ftseg{flex:1;height:8px;border-radius:6px;background:var(--chip);overflow:hidden}.ftseg i{display:block;height:100%;width:0;background:var(--navy-2)}
+.xsplit2{display:grid;grid-template-columns:1.25fr 1fr;gap:12px}@media(max-width:760px){.xsplit2{grid-template-columns:1fr}}
+.wt{margin-top:10px}.wtl{font-size:.85rem;color:var(--muted);font-weight:700;margin:6px 0 2px}
+.wtrow{position:relative;height:40px;background:var(--chip);border-radius:8px;overflow:hidden}
+.wtbar{position:absolute;height:10px;top:4px}.wtbar i{display:block;height:100%;width:0;background:var(--navy-2);border-radius:5px}.wtbar span{position:absolute;left:4px;top:11px;font-family:var(--f-mono);font-size:.68rem;color:var(--muted)}
+#wtSeq .wtbar{top:15px;height:10px}#wtSeq .wtbar span{top:11px}
+#wtPar .wtrow{height:40px}
+.emwrap{display:flex;gap:12px;align-items:stretch;margin:10px 0}
+.emline{position:relative;flex:1;min-height:64px;border-radius:10px;background:repeating-linear-gradient(90deg,var(--chip) 0 12px,transparent 12px 20px);background-size:100% 3px;background-position:0 50%;background-repeat:no-repeat;border:1px solid var(--line)}
+.emdot{position:absolute;left:4px;top:50%;transform:translate(0,-50%);width:28px;height:28px;border-radius:50%;background:var(--orange);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--f-mono);font-weight:700;font-size:.85rem;transition:left .9s linear}
+.emdot.go{left:calc(100% - 32px)}
+.emlist{display:flex;flex-direction:column;gap:6px;width:150px}
+.emls{border:1.5px solid var(--line);border-radius:10px;padding:6px 8px;background:var(--surface);opacity:.45;font-size:.85rem}.emls.on{opacity:1;border-color:var(--ok)}
+.emls div{display:flex;flex-wrap:wrap;gap:3px;margin-top:3px}.emv{font-family:var(--f-mono);font-size:.75rem;background:var(--chip);padding:1px 6px;border-radius:5px}
+.genflow{display:flex;align-items:center;gap:8px;margin-bottom:8px}.genbox{flex:1;border:1.5px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--surface);display:flex;flex-direction:column;gap:2px}.genbox b{font-size:.85rem;color:var(--muted)}.genbox span{font-family:var(--f-mono);font-size:.85rem}
+.genarrow{font-size:1.6rem;color:var(--line);transition:all .3s}.genarrow.go{color:var(--orange);transform:scale(1.3)}
+.pipe2{display:flex;gap:6px;align-items:stretch;flex-wrap:wrap;margin:10px 0}.pst{flex:1 1 90px;border:1.5px solid var(--line);border-radius:10px;padding:6px 8px;background:var(--surface);display:flex;flex-direction:column;gap:2px;transition:all .25s;min-height:52px}.pst b{font-size:.8rem;color:var(--muted);font-family:var(--f-mono)}.pst span{font-family:var(--f-mono);font-size:.95rem;min-height:1.2em}
+.pst.hit{border-color:var(--ok);background:var(--ok-soft)}.pst.drop{border-color:var(--err);background:var(--err-soft)}.pst.sink{border-style:dashed}
+.snap{display:flex;gap:14px;align-items:flex-start;margin:10px 0;flex-wrap:wrap}.snstates{display:flex;gap:4px;align-items:center;flex-wrap:wrap;flex:1}.snst{font-family:var(--f-mono);font-size:.8rem;padding:4px 9px;border-radius:999px;border:1.5px solid var(--line);opacity:.45}.snst.on{opacity:1;border-color:var(--orange);background:var(--orange-soft)}
+.phone{width:190px;border:3px solid var(--navy);border-radius:18px;overflow:hidden;background:var(--surface)}.phonebar{background:var(--navy);color:#fff;font-size:.8rem;padding:6px 10px}.phonebody{min-height:90px;display:flex;align-items:center;justify-content:center;padding:10px;text-align:center}.phonebody .err{color:var(--err)}
+.spin{width:26px;height:26px;border:4px solid var(--line);border-top-color:var(--navy-2);border-radius:50%;animation:spin 1s linear infinite}
+.iso{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}@media(max-width:600px){.iso{grid-template-columns:1fr}}
+.isobox{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--paper)}.isobox b{font-size:.85rem}
+.isoanim{position:relative;height:36px;margin:8px 0 4px;background:var(--chip);border-radius:8px;overflow:hidden}.isoball{position:absolute;top:6px;width:24px;height:24px;border-radius:50%;background:var(--orange);animation:bounce 1.4s ease-in-out infinite alternate}.isoball.frozen{animation-play-state:paused;background:var(--err)}
+@keyframes bounce{from{left:4px}to{left:calc(100% - 28px)}}
+.isoprog{height:10px;border-radius:6px;background:var(--chip);overflow:hidden;margin:8px 0 4px}.isoprog i{display:block;height:100%;width:0;background:var(--navy-2)}
+.srbar{height:6px;border-radius:4px;background:var(--chip);overflow:hidden;margin:8px 0}.srbar i{display:block;height:100%;width:0;background:var(--orange)}
+.srres{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;min-height:28px}.srchip{font-family:var(--f-mono);font-size:.85rem;padding:4px 10px;border-radius:999px;background:var(--ok-soft);color:var(--ok);border:1px solid var(--ok)}
+@media print{.fz,.elq,.ftline,.wt,.emwrap,.genflow,.pipe2,.snap,.iso,.srbar,.srres{display:none!important}}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <button class="menu-btn" id="menuBtn" aria-expanded="false" aria-controls="toc">Sommaire</button>
+  <div class="brand">Dart <span>&amp;</span> Flutter, supplément 3</div>
+  <div class="grow"></div>
+  <div class="progress" title="Chapitres marqués comme compris">
+    <span class="lbl" id="progLbl">0 / 12 compris</span>
+    <div class="bar"><i id="progBar"></i></div>
+  </div>
+</header>
+
+<div class="layout">
+<nav class="toc" id="toc" aria-label="Sommaire">
+  <h2>Sommaire</h2>
+  <ol id="tocList"></ol>
+</nav>
+
+<main>
+<div class="wrap">
+
+<section class="hero" id="top">
+  <p class="kicker">Supplément interactif n°3 · asynchrone, Streams et concurrence · cours de Mohamed Goumih</p>
+  <h1>Asynchrone, Streams et concurrence<span class="semi">Future, async / await, Stream, StreamController, isolates : attendre sans bloquer, réagir aux événements, calculer sans figer l'interface</span></h1>
+  <p class="intro">Chaque chapitre explique une notion puis l'anime : boucle d'événements qui tourne sous vos yeux, traces d'exécution pas à pas, événements qui circulent dans un flux, interface qui se fige ou non. Une question rapide par chapitre, un quiz final, une fiche mémo. Votre progression reste dans ce navigateur.</p>
+  <div class="hero-code" aria-label="Premier programme asynchrone modifiable">
+    <pre><span class="tk-t">Future</span>&lt;<span class="tk-t">String</span>&gt; <span class="tk-f">charger</span>() <span class="tk-k">async</span> {
+  <span class="tk-k">await</span> <span class="tk-t">Future</span>.<span class="tk-f">delayed</span>(<span class="tk-t">Duration</span>(milliseconds: <span class="tk-n"><input id="heroMs" value="800" type="number" min="0" max="5000" step="100" aria-label="Délai en ms" style="width:6ch"></span>));
+  <span class="tk-k">return</span> <span class="tk-s">'Données de <span class="tk-i">$nom</span>'</span>;
+}
+<span class="tk-k">void</span> <span class="tk-f">main</span>() <span class="tk-k">async</span> {
+  <span class="tk-k">var</span> nom = <span class="tk-s">'<input id="heroName" value="DEVOAM201" aria-label="Nom" spellcheck="false">'</span>;
+  <span class="tk-f">print</span>(<span class="tk-s">'Chargement…'</span>);
+  <span class="tk-f">print</span>(<span class="tk-k">await</span> <span class="tk-f">charger</span>());
+  <span class="tk-f">print</span>(<span class="tk-s">'Terminé'</span>);
+}</pre>
+    <div class="run">
+      <button class="btn primary" id="heroRun">Exécuter</button>
+      <div class="out" id="heroOut"><span class="caret"></span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== 1 ========== -->
+<section class="chap" id="ch-why" data-title="Pourquoi l'asynchrone ?" data-pages="diapos 64–65">
+  <div class="chap-head"><span class="num">1</span><h2>Pourquoi l'asynchrone ?</h2><span class="pages">diapos 64–65</span></div>
+  <p class="lead">Lire un fichier, appeler une API, interroger une base : ces opérations durent des millisecondes, parfois des secondes. Si le programme <strong>attend sans rien faire</strong>, l'interface se fige. L'asynchrone permet de lancer l'opération, de continuer à travailler, et d'être prévenu quand le résultat arrive.</p>
+  <dl class="feat">
+    <div><dt>Synchrone</dt><dd>Chaque instruction attend la fin de la précédente. Simple à lire, mais tout s'arrête pendant une opération lente.</dd></div>
+    <div><dt>Asynchrone</dt><dd>L'opération lente est lancée, le programme continue, le résultat arrive plus tard sous forme de <code>Future</code> ou de <code>Stream</code>.</dd></div>
+    <div><dt>Mono-thread</dt><dd>Un programme Dart tourne sur un seul fil d'exécution par isolate : il n'y a jamais deux lignes de code exécutées en même temps dans le même isolate.</dd></div>
+    <div><dt>Concurrence</dt><dd>Pour un calcul lourd, on délègue à un autre isolate (un autre fil, sans mémoire partagée) : chapitre 11.</dd></div>
+  </dl>
+  <div class="lab" id="lab-freeze">
+    <header><span class="dot"></span><h4>Interface bloquée ou fluide ?</h4><small>Lancez un chargement de 3 secondes</small></header>
+    <div class="body">
+      <div class="row">
+        <button class="btn primary" id="fzSync">Charger (synchrone)</button>
+        <button class="btn primary" id="fzAsync">Charger (asynchrone)</button>
+        <button class="btn" id="fzClick">Cliquez-moi pendant le chargement</button>
+        <span class="out-type">clics pris en compte : <b id="fzClicks">0</b></span>
+      </div>
+      <div class="fz"><div class="fzspin" id="fzSpin"></div><div class="fzbar"><i id="fzBar"></i></div><span id="fzTxt" class="out-type">en attente</span></div>
+      <div class="console" id="fzOut"></div>
+    </div>
+  </div>
+  <div class="note keep"><b class="h">À retenir</b><ul>
+    <li>Dans Flutter, une seule opération synchrone de 300 ms suffit pour que l'animation saccade ; à partir d'une seconde, l'utilisateur pense que l'application a planté.</li>
+    <li>Entrées / sorties (réseau, fichiers, base) : toujours asynchrone. Calcul lourd : un isolate.</li>
+  </ul></div>
+  <div class="check" data-ans="1">
+    <p class="q">Un programme Dart (un seul isolate) peut-il exécuter deux fonctions en même temps ?</p>
+    <div class="opts"><button>Oui, grâce à async / await</button><button>Non : un seul fil d'exécution, les tâches s'enchaînent</button><button>Oui, si elles renvoient un Future</button></div>
+    <p class="explain">L'asynchrone n'est pas du parallélisme : le code s'exécute toujours un morceau à la fois, mais il ne reste pas bloqué pendant les attentes.</p>
+  </div>
+</section>
+
+<!-- ========== 2 ========== -->
+<section class="chap" id="ch-loop" data-title="La boucle d'événements" data-pages="diapo 66">
+  <div class="chap-head"><span class="num">2</span><h2>La boucle d'événements</h2><span class="pages">diapo 66</span></div>
+  <p class="lead">La boucle d'événements (event loop) est le moteur de l'asynchrone. Elle exécute d'abord tout le code synchrone, puis vide la <strong>file des microtâches</strong>, puis prend <strong>un</strong> événement dans la file des événements, et recommence.</p>
+  <script type="text/x-dart" data-file="event_loop.dart">void main() {
+  print('A');                                 // synchrone
+  Future(() => print('B'));                   // file des événements
+  Future.microtask(() => print('C'));         // file des microtâches
+  Future.delayed(Duration.zero, () => print('D')); // événements (timer)
+  scheduleMicrotask(() => print('E'));        // microtâches (import 'dart:async')
+  print('F');                                 // synchrone
+}
+// Affiche : A F C E B D</script>
+  <div class="lab" id="lab-loop">
+    <header><span class="dot"></span><h4>La boucle tourne sous vos yeux</h4><small>Suivez les files</small></header>
+    <div class="body">
+      <div class="elq">
+        <div class="elbox"><div class="elt">Code synchrone (main)</div><div class="elitems" id="elMain"></div></div>
+        <div class="elbox"><div class="elt">File des microtâches</div><div class="elitems" id="elMicro"></div></div>
+        <div class="elbox"><div class="elt">File des événements</div><div class="elitems" id="elEvent"></div></div>
+      </div>
+      <div class="row"><button class="btn primary" id="elPlay">▶ Lire</button><button class="btn" id="elNext">▶| Étape</button><button class="btn" id="elReset">↺</button><span class="out-type" id="elNote"></span></div>
+      <div class="console" id="elOut"></div>
+    </div>
+  </div>
+  <div class="tbl"><table>
+    <tr><th>File</th><th>Qui y entre</th><th>Priorité</th></tr>
+    <tr><td>Microtâches</td><td><code>scheduleMicrotask</code>, <code>Future.microtask</code>, la suite d'un <code>await</code> sur un Future déjà terminé, les <code>then</code> d'un Future terminé</td><td>Vidée entièrement avant tout événement</td></tr>
+    <tr><td>Événements</td><td><code>Future(...)</code>, <code>Future.delayed</code>, timers, E/S, clics, réponses réseau</td><td>Un seul à la fois, puis retour aux microtâches</td></tr>
+  </table></div>
+  <div class="note trap"><b class="h">Piège</b><p>Une boucle infinie de microtâches (une microtâche qui en planifie une autre) bloque la boucle : les événements, dont les clics, ne passent plus jamais.</p></div>
+  <div class="check" data-ans="2">
+    <p class="q">Qu'affiche <code>print(1); Future(() =&gt; print(2)); Future.microtask(() =&gt; print(3)); print(4);</code> ?</p>
+    <div class="opts"><button>1 2 3 4</button><button>1 4 2 3</button><button>1 4 3 2</button></div>
+    <p class="explain">Synchrone d'abord (1, 4), puis les microtâches (3), puis les événements (2).</p>
+  </div>
+</section>
+
+<!-- ========== 3 ========== -->
+<section class="chap" id="ch-future" data-title="Les Futures" data-pages="diapo 67">
+  <div class="chap-head"><span class="num">3</span><h2>Les Futures</h2><span class="pages">diapo 67</span></div>
+  <p class="lead">Un <code>Future&lt;T&gt;</code> est une promesse : « une valeur de type T arrivera plus tard, ou une erreur ». Il est d'abord <em>en attente</em>, puis <em>terminé</em> une seule fois, avec une valeur ou une erreur.</p>
+  <script type="text/x-dart" data-file="future.dart">Future<int> lireNote() {
+  return Future.delayed(Duration(seconds: 1), () => 17);
+}
+
+void main() {
+  print('Avant');
+  lireNote()
+      .then((n) => print('Note : $n'))       // valeur
+      .catchError((e) => print('Erreur : $e')) // erreur
+      .whenComplete(() => print('Fini'));     // dans tous les cas
+  print('Après');  // s'affiche AVANT « Note : 17 »
+}
+
+// Constructeurs utiles
+Future<int> a = Future.value(3);                 // déjà terminé
+Future<int> b = Future.error(Exception('boom')); // déjà en erreur
+Future<void> c = Future.delayed(Duration(milliseconds: 300));
+Future<int> d = Future(() => 2 * 21);            // calcul planifié</script>
+  <div class="lab" id="lab-future">
+    <header><span class="dot"></span><h4>Cycle de vie d'un Future</h4><small>Choisissez le dénouement</small></header>
+    <div class="body">
+      <div class="row">
+        <div class="seg" role="tablist" id="ftSeg">
+          <button role="tab" aria-selected="true" data-k="ok">Valeur (17)</button>
+          <button role="tab" aria-selected="false" data-k="err">Erreur</button>
+        </div>
+        <button class="btn primary" id="ftPlay">▶ Lancer</button>
+      </div>
+      <div class="ftline"><span class="ftst" id="ft0">créé</span><span class="ftseg"><i id="ftFill"></i></span><span class="ftst" id="ft1">en attente…</span><span class="ftseg"><i id="ftFill2"></i></span><span class="ftst" id="ft2">?</span></div>
+      <div class="console" id="ftOut"></div>
+    </div>
+  </div>
+  <div class="note keep"><b class="h">À retenir</b><ul>
+    <li><code>then</code> reçoit la valeur, <code>catchError</code> l'erreur, <code>whenComplete</code> s'exécute toujours (comme <code>finally</code>).</li>
+    <li>Un Future terminé ne change plus ; un second <code>then</code> reçoit immédiatement la même valeur.</li>
+    <li>Oublier de traiter l'erreur d'un Future = « Unhandled exception » dans la console et, dans Flutter, un écran rouge en mode debug.</li>
+  </ul></div>
+  <div class="check" data-ans="1">
+    <p class="q">Dans quel ordre s'affichent « Avant », « Après » et « Note : 17 » ?</p>
+    <div class="opts"><button>Avant, Note : 17, Après</button><button>Avant, Après, Note : 17</button><button>Note : 17, Avant, Après</button></div>
+    <p class="explain"><code>then</code> enregistre une fonction à exécuter plus tard ; <code>main</code> continue et affiche « Après » tout de suite.</p>
+  </div>
+</section>
+
+<!-- ========== 4 ========== -->
+<section class="chap" id="ch-await" data-title="async et await" data-pages="diapos 68–69">
+  <div class="chap-head"><span class="num">4</span><h2>async et await</h2><span class="pages">diapos 68–69</span></div>
+  <p class="lead"><code>async</code> marque une fonction qui renvoie un <code>Future</code> ; <code>await</code> met cette fonction en pause (sans bloquer le programme) jusqu'au résultat. Le code se lit comme du synchrone, mais s'exécute en plusieurs morceaux.</p>
+  <script type="text/x-dart" data-file="async_await.dart">Future<String> telecharger(String url) async {
+  await Future.delayed(Duration(seconds: 1));
+  return 'contenu de $url';
+}
+
+Future<void> main() async {
+  print('1. début');
+  var page = await telecharger('goumih.ma');   // pause ici
+  print('2. $page');
+  print('3. fin');
+}</script>
+  <div class="lab" id="lab-trace">
+    <header><span class="dot"></span><h4>Trace d'exécution : où se fait la pause ?</h4><small>Pas à pas</small></header>
+    <div class="body">
+      <div class="xsplit2"><div class="lines" id="awLines"></div><div><div class="console" id="awOut"></div><p id="awNote" class="out-type" style="margin:8px 0 0"></p></div></div>
+      <div class="row"><button class="btn" id="awPrev">◀</button><button class="btn primary" id="awPlay">▶ Lire</button><button class="btn" id="awNext">▶|</button><span class="out-type" id="awStep"></span></div>
+    </div>
+  </div>
+
+  <h3>Séquentiel ou parallèle : Future.wait</h3>
+  <script type="text/x-dart" data-file="future_wait.dart">// Séquentiel : 3 s au total
+var a = await lire('a');   // 1 s
+var b = await lire('b');   // 1 s
+var c = await lire('c');   // 1 s
+
+// Parallèle : ~1 s au total (les 3 attentes se chevauchent)
+var res = await Future.wait([lire('a'), lire('b'), lire('c')]);
+print(res); // [a, b, c] dans l'ordre de la liste
+
+// Record : types différents (Dart 3)
+var (u, n) = await (chargerUser(), chargerNotes()).wait;</script>
+  <div class="lab" id="lab-wait">
+    <header><span class="dot"></span><h4>Course : await en série contre Future.wait</h4><small>Même travail, deux durées</small></header>
+    <div class="body">
+      <div class="row"><button class="btn primary" id="wtPlay">▶ Lancer les deux</button><span class="out-type" id="wtTxt"></span></div>
+      <div class="wt"><div class="wtl">en série</div><div class="wtrow" id="wtSeq"></div><div class="wtl">Future.wait</div><div class="wtrow" id="wtPar"></div></div>
+    </div>
+  </div>
+  <div class="note trap"><b class="h">Pièges fréquents</b><ul>
+    <li>Oublier <code>await</code> : <code>var page = telecharger(...)</code> donne un <code>Future&lt;String&gt;</code>, pas une <code>String</code>. L'analyseur avertit (<em>unawaited_futures</em>).</li>
+    <li><code>await</code> n'est permis que dans une fonction <code>async</code> ; <code>main</code> peut l'être : <code>Future&lt;void&gt; main() async</code>.</li>
+    <li>Un <code>await</code> dans une boucle <code>for</code> rend les itérations séquentielles : voulu pour respecter un ordre, à éviter si elles sont indépendantes.</li>
+  </ul></div>
+  <div class="check" data-ans="2">
+    <p class="q">Combien de temps dure <code>await Future.wait([attendre(2), attendre(3), attendre(1)])</code> (durées en secondes) ?</p>
+    <div class="opts"><button>6 s</button><button>1 s</button><button>3 s</button></div>
+    <p class="explain">Les trois attentes démarrent ensemble : on attend la plus longue, 3 s.</p>
+  </div>
+</section>
+
+<!-- ========== 5 ========== -->
+<section class="chap" id="ch-errors" data-title="Gérer les erreurs asynchrones" data-pages="diapo 69">
+  <div class="chap-head"><span class="num">5</span><h2>Gérer les erreurs asynchrones</h2><span class="pages">diapo 69</span></div>
+  <p class="lead">Avec <code>await</code>, une erreur asynchrone se comporte comme une exception ordinaire : <code>try / catch / finally</code> fonctionnent. Sans <code>await</code>, il faut <code>catchError</code> — ou l'erreur n'est attrapée par personne.</p>
+  <script type="text/x-dart" data-file="erreurs.dart">Future<int> diviser(int a, int b) async {
+  await Future.delayed(Duration(milliseconds: 200));
+  if (b == 0) throw ArgumentError('division par zéro');
+  return a ~/ b;
+}
+
+Future<void> main() async {
+  try {
+    print(await diviser(10, 2));   // 5
+    print(await diviser(1, 0));    // lève l'erreur
+    print('jamais affiché');
+  } on ArgumentError catch (e) {
+    print('Argument : ${e.message}');
+  } catch (e, stack) {
+    print('Autre erreur : $e');
+  } finally {
+    print('nettoyage');
+  }
+
+  // Sans await : il faut chaîner catchError
+  diviser(1, 0).then(print).catchError((e) => print('attrapée : $e'));
+  // Oublié ? -> Unhandled exception
+}</script>
+  <div class="lab" id="lab-err">
+    <header><span class="dot"></span><h4>Qui attrape l'erreur ?</h4><small>Choisissez le scénario</small></header>
+    <div class="body">
+      <div class="row">
+        <label for="erWhere">Erreur</label><select id="erWhere" class="mono"><option value="none">aucune</option><option value="arg" selected>ArgumentError</option><option value="fmt">FormatException</option></select>
+        <label for="erHow">Appel</label><select id="erHow" class="mono"><option value="await" selected>await dans try/catch</option><option value="then">.then() sans catchError</option><option value="thenc">.then().catchError()</option></select>
+      </div>
+      <div class="console" id="erOut"></div>
+    </div>
+  </div>
+  <div class="note keep"><b class="h">À retenir</b><ul>
+    <li><code>on Type catch (e)</code> cible un type d'erreur ; <code>catch (e, stack)</code> attrape tout et donne la pile.</li>
+    <li><code>rethrow</code> relance l'erreur après l'avoir journalisée.</li>
+    <li>Dans Flutter, montrez l'erreur à l'utilisateur (<code>SnackBar</code>, message dans le widget) plutôt que de la laisser remonter.</li>
+  </ul></div>
+  <div class="check" data-ans="0">
+    <p class="q"><code>f().then(print);</code> où <code>f</code> lève une erreur, sans catchError ni try. Que se passe-t-il ?</p>
+    <div class="opts"><button>Erreur non gérée affichée dans la console (Unhandled exception)</button><button>Rien, l'erreur est ignorée silencieusement</button><button>Erreur de compilation</button></div>
+    <p class="explain">Un Future en erreur sans gestionnaire remonte à la zone d'exécution : message « Unhandled exception » et, en debug Flutter, écran d'erreur.</p>
+  </div>
+</section>
+
+<!-- ========== 6 ========== -->
+<section class="chap" id="ch-stream" data-title="Les Streams" data-pages="diapo 70">
+  <div class="chap-head"><span class="num">6</span><h2>Les Streams</h2><span class="pages">diapo 70</span></div>
+  <p class="lead">Un <code>Future</code> livre <strong>une</strong> valeur ; un <code>Stream&lt;T&gt;</code> en livre <strong>plusieurs, dans le temps</strong> : positions GPS, frappes clavier, messages d'un chat, lignes d'un fichier. On s'y abonne avec <code>listen</code> ou on le parcourt avec <code>await for</code>.</p>
+  <script type="text/x-dart" data-file="stream.dart">Stream<int> compteur = Stream.periodic(Duration(seconds: 1), (i) => i + 1).take(5);
+
+void main() {
+  // 1. listen : on reçoit chaque événement, puis la fin
+  var sub = compteur.listen(
+    (v) => print('tick $v'),
+    onError: (e) => print('erreur $e'),
+    onDone: () => print('terminé'),
+  );
+  // sub.pause(); sub.resume(); sub.cancel();
+
+  // 2. Stream à partir d'une liste ou d'un Future
+  Stream.fromIterable([1, 2, 3]).listen(print);
+  Stream.fromFuture(Future.value('un seul')).listen(print);
+}</script>
+  <div class="tbl"><table>
+    <tr><th></th><th>Single-subscription (par défaut)</th><th>Broadcast</th></tr>
+    <tr><td>Abonnés</td><td>un seul <code>listen</code>, sinon erreur</td><td>plusieurs, à tout moment</td></tr>
+    <tr><td>Événements avant l'abonnement</td><td>mis en attente</td><td>perdus</td></tr>
+    <tr><td>Exemples</td><td>lecture de fichier, réponse HTTP</td><td>clics, position, chat ; <code>s.asBroadcastStream()</code></td></tr>
+  </table></div>
+  <div class="lab" id="lab-emit">
+    <header><span class="dot"></span><h4>Des événements dans le flux</h4><small>Émettez, abonnez, annulez</small></header>
+    <div class="body">
+      <div class="row">
+        <div class="seg" role="tablist" id="emSeg"><button role="tab" aria-selected="true" data-k="single">single-subscription</button><button role="tab" aria-selected="false" data-k="broadcast">broadcast</button></div>
+        <button class="btn primary" id="emAdd">＋ Émettre</button><button class="btn" id="emL1">listen() A</button><button class="btn" id="emL2">listen() B</button><button class="btn" id="emCancel">cancel() A</button><button class="btn" id="emDone">close()</button>
+      </div>
+      <div class="emwrap"><div class="emline" id="emLine"></div><div class="emlist"><div class="emls" id="emA"><b>Abonné A</b><div></div></div><div class="emls" id="emB"><b>Abonné B</b><div></div></div></div></div>
+      <div class="console" id="emOut"></div>
+    </div>
+  </div>
+  <div class="check" data-ans="1">
+    <p class="q">Un stream single-subscription sur lequel on appelle <code>listen</code> deux fois…</p>
+    <div class="opts"><button>envoie les événements aux deux abonnés</button><button>lève une erreur « Stream has already been listened to »</button><button>remplace le premier abonné par le second</button></div>
+    <p class="explain">Seul un stream broadcast accepte plusieurs abonnés : convertissez avec <code>asBroadcastStream()</code> ou utilisez <code>StreamController.broadcast()</code>.</p>
+  </div>
+</section>
+
+<!-- ========== 7 ========== -->
+<section class="chap" id="ch-gen" data-title="async*, yield et await for" data-pages="diapo 70">
+  <div class="chap-head"><span class="num">7</span><h2>async*, yield et await for</h2><span class="pages">diapo 70</span></div>
+  <p class="lead">Pour <em>produire</em> un stream, une fonction <code>async*</code> émet ses valeurs avec <code>yield</code>, une par une, au rythme qu'elle veut. Pour le <em>consommer</em> dans une fonction <code>async</code>, <code>await for</code> attend chaque valeur.</p>
+  <script type="text/x-dart" data-file="generateur.dart">Stream<int> compteARebours(int depart) async* {
+  for (var i = depart; i >= 0; i--) {
+    await Future.delayed(Duration(seconds: 1));
+    yield i;                       // émet une valeur, puis continue
+  }
+  // fin de la fonction = fin du stream (onDone)
+}
+
+Future<void> main() async {
+  await for (var v in compteARebours(3)) {
+    print(v);                      // 3 2 1 0, une valeur par seconde
+    if (v == 1) break;             // break annule l'abonnement
+  }
+  print('décollage');
+}
+
+// yield* délègue à un autre stream
+Stream<int> tout() async* {
+  yield* compteARebours(2);
+  yield 99;
+}</script>
+  <div class="lab" id="lab-gen">
+    <header><span class="dot"></span><h4>Le générateur pas à pas</h4><small>yield émet, await for reçoit</small></header>
+    <div class="body">
+      <div class="xsplit2"><div class="lines" id="gnLines"></div><div><div class="genflow"><div class="genbox"><b>async*</b><span id="gnProd">—</span></div><div class="genarrow" id="gnArrow">→</div><div class="genbox"><b>await for</b><span id="gnCons">—</span></div></div><div class="console" id="gnOut"></div></div></div>
+      <div class="row"><button class="btn primary" id="gnPlay">▶ Lire</button><button class="btn" id="gnNext">▶|</button><button class="btn" id="gnReset">↺</button><span class="out-type" id="gnNote"></span></div>
+    </div>
+  </div>
+  <div class="note keep"><b class="h">À retenir</b><ul>
+    <li><code>async*</code> renvoie un <code>Stream</code>, <code>async</code> renvoie un <code>Future</code>, <code>sync*</code> renvoie un <code>Iterable</code> (paresseux, sans attente).</li>
+    <li>Le corps d'un <code>async*</code> ne démarre qu'au premier <code>listen</code> ; il se met en pause si l'abonné fait <code>pause()</code>.</li>
+    <li><code>await for</code> traite les événements l'un après l'autre : un traitement long retarde la lecture des suivants.</li>
+  </ul></div>
+  <div class="check" data-ans="0">
+    <p class="q">Que renvoie une fonction déclarée <code>Stream&lt;int&gt; f() async* { yield 1; yield 2; }</code> ?</p>
+    <div class="opts"><button>Un Stream qui émettra 1 puis 2 quand on l'écoutera</button><button>La liste [1, 2]</button><button>Un Future&lt;int&gt; valant 2</button></div>
+    <p class="explain">Un générateur ne s'exécute pas à l'appel : il décrit un flux, démarré par <code>listen</code> ou <code>await for</code>.</p>
+  </div>
+</section>
+
+<!-- ========== 8 ========== -->
+<section class="chap" id="ch-transform" data-title="Transformer un Stream" data-pages="diapo 71">
+  <div class="chap-head"><span class="num">8</span><h2>Transformer un Stream</h2><span class="pages">diapo 71</span></div>
+  <p class="lead">Comme une liste, un stream se transforme en chaîne : <code>map</code>, <code>where</code>, <code>take</code>, <code>distinct</code>… Chaque opérateur renvoie un nouveau stream ; rien ne circule tant que personne n'écoute le dernier.</p>
+  <script type="text/x-dart" data-file="transform.dart">var mesures = Stream.periodic(Duration(milliseconds: 500), (i) => i * 7 % 40);
+
+var alertes = mesures
+    .map((t) => t + 10)          // calibrage
+    .where((t) => t > 30)        // garde les valeurs élevées
+    .distinct()                  // ignore les répétitions
+    .take(3);                    // s'arrête après 3 alertes
+
+alertes.listen(print);
+
+// Autres opérateurs utiles
+// expand((e) => [e, e])   une valeur -> plusieurs
+// skip(2), takeWhile(...), skipWhile(...)
+// asyncMap((e) async => await traiter(e))   transformation asynchrone
+// timeout(Duration(seconds: 2))   erreur si silence trop long
+// Terminaux : first, last, length, toList(), reduce, fold, any, every, join</script>
+  <div class="lab" id="lab-pipe">
+    <header><span class="dot"></span><h4>Pipeline animé</h4><small>Chaque valeur traverse les opérateurs</small></header>
+    <div class="body">
+      <div class="row"><label for="ppMap">map : t +</label><input id="ppMap" type="number" value="10" class="mono" style="width:6ch"><label for="ppWhere">where : t &gt;</label><input id="ppWhere" type="number" value="30" class="mono" style="width:6ch"><label for="ppTake">take</label><input id="ppTake" type="number" value="3" min="1" max="8" class="mono" style="width:5ch"><button class="btn primary" id="ppPlay">▶ Émettre 8 valeurs</button></div>
+      <div class="pipe2" id="ppPipe"><div class="pst"><b>source</b><span></span></div><div class="pst"><b>map</b><span></span></div><div class="pst"><b>where</b><span></span></div><div class="pst"><b>distinct</b><span></span></div><div class="pst"><b>take</b><span></span></div><div class="pst sink"><b>listen</b><span></span></div></div>
+      <div class="console" id="ppOut"></div>
+    </div>
+  </div>
+  <div class="check" data-ans="2">
+    <p class="q"><code>Stream.fromIterable([1, 2, 3, 4]).where((e) =&gt; e.isEven).map((e) =&gt; e * 10).toList()</code> donne…</p>
+    <div class="opts"><button>[10, 20, 30, 40]</button><button>[2, 4]</button><button>Un Future&lt;List&lt;int&gt;&gt; valant [20, 40]</button></div>
+    <p class="explain">where garde 2 et 4, map les multiplie, et <code>toList()</code> sur un stream renvoie un Future (la liste n'est complète qu'à la fin du flux).</p>
+  </div>
+</section>
+
+<!-- ========== 9 ========== -->
+<section class="chap" id="ch-controller" data-title="StreamController" data-pages="diapo 71">
+  <div class="chap-head"><span class="num">9</span><h2>StreamController</h2><span class="pages">diapo 71</span></div>
+  <p class="lead">Quand les événements viennent de votre propre code (un bouton, un capteur, un socket), un <code>StreamController</code> fournit les deux bouts : le <code>sink</code> pour <em>pousser</em> des événements et le <code>stream</code> pour les <em>écouter</em>.</p>
+  <script type="text/x-dart" data-file="controller.dart">import 'dart:async';
+
+class Panier {
+  final _ctrl = StreamController<int>.broadcast();   // plusieurs écrans écoutent
+  int _total = 0;
+
+  Stream<int> get total => _ctrl.stream;              // côté lecture (public)
+
+  void ajouter(int prix) {
+    _total += prix;
+    _ctrl.add(_total);                                // côté écriture (privé)
+  }
+
+  void erreur() => _ctrl.addError(StateError('stock épuisé'));
+
+  void dispose() => _ctrl.close();                    // toujours fermer !
+}
+
+void main() {
+  var p = Panier();
+  p.total.listen((t) => print('Total : $t'), onError: (e) => print('!! $e'), onDone: () => print('fermé'));
+  p.ajouter(30);
+  p.ajouter(12);
+  p.erreur();
+  p.dispose();
+}</script>
+  <div class="lab" id="lab-ctrl">
+    <header><span class="dot"></span><h4>Pilotez un StreamController</h4><small>sink à gauche, stream à droite</small></header>
+    <div class="body">
+      <div class="row"><label for="ctPrix">prix</label><input id="ctPrix" type="number" value="30" class="mono" style="width:7ch"><button class="btn primary" id="ctAdd">add(total)</button><button class="btn" id="ctErr">addError()</button><button class="btn" id="ctClose">close()</button><label><input type="checkbox" id="ctBc" checked> broadcast</label><button class="btn" id="ctL2">2ᵉ listen()</button><button class="btn" id="ctReset">↺ nouveau controller</button></div>
+      <div class="console" id="ctOut"></div>
+    </div>
+  </div>
+  <div class="note trap"><b class="h">Pièges</b><ul>
+    <li>Un controller non fermé garde ses abonnés en mémoire : dans un <code>State</code> Flutter, appelez <code>close()</code> dans <code>dispose()</code>.</li>
+    <li>Après <code>close()</code>, tout <code>add</code> lève « Cannot add event after closing ».</li>
+    <li>Exposez le <code>stream</code>, jamais le controller : les autres classes ne doivent pas pouvoir émettre à votre place.</li>
+  </ul></div>
+  <div class="check" data-ans="1">
+    <p class="q">Avec un <code>StreamController&lt;int&gt;()</code> (non broadcast), un événement ajouté <em>avant</em> le premier listen est…</p>
+    <div class="opts"><button>perdu</button><button>mis en mémoire et livré au premier abonné</button><button>une erreur</button></div>
+    <p class="explain">Le mode single-subscription met les événements en attente ; en broadcast, ils seraient perdus.</p>
+  </div>
+</section>
+
+<!-- ========== 10 ========== -->
+<section class="chap" id="ch-flutter" data-title="FutureBuilder et StreamBuilder" data-pages="complément Flutter">
+  <div class="chap-head"><span class="num">10</span><h2>FutureBuilder et StreamBuilder</h2><span class="pages">complément Flutter</span></div>
+  <p class="lead">Dans Flutter, on ne fait jamais <code>await</code> dans <code>build</code>. Deux widgets observent un Future ou un Stream et reconstruisent l'interface à chaque changement d'état, décrit par un <code>AsyncSnapshot</code>.</p>
+  <script type="text/x-dart" data-file="builders.dart">FutureBuilder<String>(
+  future: _page,                 // créé dans initState, PAS dans build
+  builder: (context, snapshot) {
+    if (snapshot.connectionState == ConnectionState.waiting) {
+      return const CircularProgressIndicator();
+    }
+    if (snapshot.hasError) return Text('Erreur : ${snapshot.error}');
+    return Text(snapshot.data!);           // hasData
+  },
+)
+
+StreamBuilder<int>(
+  stream: panier.total,
+  initialData: 0,
+  builder: (context, snap) => Text('Total : ${snap.data}'),
+)
+
+// Dans un gestionnaire d'événement : await puis setState
+onPressed: () async {
+  setState(() => chargement = true);
+  final r = await api.envoyer(formulaire);
+  if (!mounted) return;         // le widget peut avoir disparu pendant l'attente
+  setState(() { chargement = false; resultat = r; });
+}</script>
+  <div class="lab" id="lab-snap">
+    <header><span class="dot"></span><h4>Le snapshot change, le widget suit</h4><small>Simulez un chargement</small></header>
+    <div class="body">
+      <div class="row"><div class="seg" role="tablist" id="snSeg"><button role="tab" aria-selected="true" data-k="future">FutureBuilder</button><button role="tab" aria-selected="false" data-k="stream">StreamBuilder</button></div><button class="btn primary" id="snPlay">▶ Lancer</button><button class="btn" id="snErr">Avec erreur</button></div>
+      <div class="snap"><div class="snstates" id="snStates"></div><div class="phone"><div class="phonebar">Mon appli</div><div class="phonebody" id="snWidget"></div></div></div>
+      <div class="console" id="snOut"></div>
+    </div>
+  </div>
+  <div class="note trap"><b class="h">L'erreur classique</b><p>Créer le Future dans <code>build</code> (<code>future: api.charger()</code>) relance la requête à chaque reconstruction : écran qui clignote et serveur surchargé. Stockez le Future dans un champ, initialisé dans <code>initState</code>.</p></div>
+  <div class="check" data-ans="2">
+    <p class="q">Pourquoi tester <code>mounted</code> après un <code>await</code> dans un <code>State</code> ?</p>
+    <div class="opts"><button>Pour vérifier que le Future a réussi</button><button>Pour relancer build</button><button>Parce que l'utilisateur a pu quitter l'écran pendant l'attente : setState sur un widget détruit lève une erreur</button></div>
+    <p class="explain">Entre le début et la fin de l'attente, le widget peut avoir été retiré de l'arbre.</p>
+  </div>
+</section>
+
+<!-- ========== 11 ========== -->
+<section class="chap" id="ch-isolate" data-title="Concurrence : les isolates" data-pages="complément">
+  <div class="chap-head"><span class="num">11</span><h2>Concurrence : les isolates</h2><span class="pages">complément</span></div>
+  <p class="lead">L'asynchrone ne rend pas un calcul plus rapide : un tri de 2 millions d'éléments bloque la boucle d'événements, <code>await</code> ou pas. Pour un vrai travail en parallèle, Dart lance un <strong>isolate</strong> : un autre fil d'exécution avec sa propre mémoire, qui communique par messages.</p>
+  <script type="text/x-dart" data-file="isolate.dart">import 'dart:isolate';
+
+int calculLourd(int n) {
+  var s = 0;
+  for (var i = 0; i < n; i++) s += i % 7;
+  return s;
+}
+
+Future<void> main() async {
+  // Dart 2.19+ : la façon simple
+  final r = await Isolate.run(() => calculLourd(200000000));
+  print(r);
+
+  // Flutter : compute(fonction, argument) fait la même chose
+  // final r = await compute(calculLourd, 200000000);
+}
+// Règles : la fonction doit être de haut niveau ou static ;
+// l'argument et le résultat sont copiés (pas de mémoire partagée) ;
+// pas d'accès aux widgets ni au BuildContext depuis l'isolate.</script>
+  <div class="lab" id="lab-iso">
+    <header><span class="dot"></span><h4>Calcul lourd : avec ou sans isolate</h4><small>Regardez l'animation</small></header>
+    <div class="body">
+      <div class="row"><button class="btn primary" id="isMain">Calculer dans l'isolate principal</button><button class="btn primary" id="isWorker">Calculer avec Isolate.run</button></div>
+      <div class="iso"><div class="isobox"><b>Isolate principal (UI)</b><div class="isoanim"><div class="isoball" id="isoBall"></div></div><span class="out-type" id="isoFps">60 images / s</span></div><div class="isobox"><b>Isolate de travail</b><div class="isoprog"><i id="isoProg"></i></div><span class="out-type" id="isoTxt">inactif</span></div></div>
+      <div class="console" id="isOut"></div>
+    </div>
+  </div>
+  <div class="tbl"><table>
+    <tr><th>Besoin</th><th>Outil</th></tr>
+    <tr><td>Attendre une E/S (réseau, fichier, base)</td><td><code>async</code> / <code>await</code> : la boucle reste libre</td></tr>
+    <tr><td>Plusieurs E/S indépendantes</td><td><code>Future.wait</code></td></tr>
+    <tr><td>Calcul CPU &gt; ~16 ms (parsing JSON lourd, image, tri)</td><td><code>Isolate.run</code> / <code>compute</code></td></tr>
+    <tr><td>Travail de fond permanent avec échanges</td><td><code>Isolate.spawn</code> + <code>SendPort</code> / <code>ReceivePort</code></td></tr>
+  </table></div>
+  <div class="check" data-ans="1">
+    <p class="q">Un tri de 5 millions d'éléments dans une fonction <code>async</code> appelée avec <code>await</code>…</p>
+    <div class="opts"><button>s'exécute en arrière-plan sans gêner l'interface</button><button>bloque quand même l'interface : il faut un isolate</button><button>est automatiquement découpé par la boucle d'événements</button></div>
+    <p class="explain"><code>async</code> ne crée pas de fil : le calcul occupe la boucle d'événements jusqu'à sa fin.</p>
+  </div>
+</section>
+
+<!-- ========== 12 ========== -->
+<section class="chap" id="ch-synth" data-title="Synthèse : recherche en direct" data-pages="exemple complet">
+  <div class="chap-head"><span class="num">12</span><h2>Synthèse : recherche en direct</h2><span class="pages">exemple complet</span></div>
+  <p class="lead">Un champ de recherche qui interroge une API à chaque frappe : il faut <em>attendre que l'utilisateur fasse une pause</em> (debounce), annuler la requête précédente et ignorer les réponses arrivées dans le désordre. Tout ce supplément réuni en un exemple.</p>
+  <script type="text/x-dart" data-file="recherche.dart">import 'dart:async';
+
+class Recherche {
+  final _ctrl = StreamController<String>();
+  Timer? _timer;
+  int _requete = 0;
+
+  Stream<String> get saisies => _ctrl.stream;
+
+  void onChanged(String texte) {
+    _timer?.cancel();                                   // annule l'attente en cours
+    _timer = Timer(Duration(milliseconds: 400), () => _ctrl.add(texte));
+  }
+
+  Stream<List<String>> get resultats => saisies
+      .distinct()                                       // même texte -> rien
+      .where((t) => t.length >= 2)                      // au moins 2 lettres
+      .asyncMap((t) async {
+        final id = ++_requete;
+        final r = await api.chercher(t);                // requête réseau
+        return id == _requete ? r : <String>[];         // réponse périmée ignorée
+      });
+
+  void dispose() { _timer?.cancel(); _ctrl.close(); }
+}</script>
+  <div class="lab" id="lab-search">
+    <header><span class="dot"></span><h4>Tapez, et regardez le debounce travailler</h4><small>400 ms de silence déclenchent la requête</small></header>
+    <div class="body">
+      <div class="row"><input type="text" id="srIn" class="mono" placeholder="tapez un mot… (ex. flutter)" style="flex:1;min-width:220px"><span class="out-type">timer : <b id="srTimer">—</b></span><span class="out-type">requêtes : <b id="srReq">0</b></span></div>
+      <div class="srbar"><i id="srFill"></i></div>
+      <div class="console" id="srOut"></div>
+      <div class="srres" id="srRes"></div>
+    </div>
+  </div>
+  <div class="note keep"><b class="h">Bonnes pratiques</b><ul>
+    <li>Nommez les fonctions asynchrones par ce qu'elles font, pas par leur mécanisme ; renvoyez toujours un type précis (<code>Future&lt;List&lt;User&gt;&gt;</code>, jamais <code>Future&lt;dynamic&gt;</code>).</li>
+    <li>Un <code>await</code> par attente réelle ; <code>Future.wait</code> pour les attentes indépendantes.</li>
+    <li>Gérez chaque erreur à l'endroit où vous pouvez réagir (message, réessai), et fermez vos controllers et abonnements dans <code>dispose</code>.</li>
+    <li>Utilisez <code>FutureBuilder</code> / <code>StreamBuilder</code> pour afficher, un gestionnaire d'état (Provider, Riverpod, Bloc) pour partager.</li>
+  </ul></div>
+  <div class="check" data-ans="1">
+    <p class="q">À quoi sert <code>id == _requete</code> dans l'exemple ?</p>
+    <div class="opts"><button>À limiter le nombre de requêtes par seconde</button><button>À ignorer une réponse arrivée après une requête plus récente</button><button>À annuler le timer</button></div>
+    <p class="explain">Les réponses réseau peuvent arriver dans le désordre ; on ne garde que celle de la dernière saisie.</p>
+  </div>
+</section>
+
+<!-- ========== QUIZ ========== -->
+<section class="chap quiz-wrap" id="quiz" data-title="Quiz final" data-pages="" data-nocount="1">
+  <div class="chap-head"><span class="num">?</span><h2>Quiz final</h2><span class="pages">12 questions</span></div>
+  <p class="lead">Douze questions qui mélangent tous les chapitres. Votre meilleur score est conservé dans ce navigateur.</p>
+  <div class="quiz" id="quizBox"></div>
+</section>
+
+<!-- ========== MEMO ========== -->
+<section class="chap" id="memo" data-title="Fiche mémo" data-pages="" data-nocount="1">
+  <div class="chap-head"><span class="num">✓</span><h2>Fiche mémo</h2><span class="pages">à imprimer</span></div>
+  <p class="lead">L'essentiel de l'asynchrone Dart sur une page. Imprimez-la (Ctrl + P) : les ateliers interactifs sont masqués à l'impression.</p>
+  <div class="tbl memo"><table>
+    <tr><th>Notion</th><th>Syntaxe</th><th>À retenir</th></tr>
+    <tr><td>Future</td><td><code>Future&lt;T&gt; f() async { … return v; }</code></td><td>une valeur plus tard ; terminé une seule fois</td></tr>
+    <tr><td>then / catchError</td><td><code>f().then(print).catchError(print).whenComplete(…)</code></td><td>chaînage sans await</td></tr>
+    <tr><td>await</td><td><code>var v = await f();</code></td><td>pause la fonction async, pas le programme</td></tr>
+    <tr><td>Erreurs</td><td><code>try { await f(); } on X catch (e) {} finally {}</code></td><td>sans await : catchError obligatoire</td></tr>
+    <tr><td>Parallèle</td><td><code>await Future.wait([a(), b()])</code></td><td>durée = la plus longue</td></tr>
+    <tr><td>Boucle d'événements</td><td>synchrone → microtâches → 1 événement</td><td>microtask avant Future(), Future.delayed</td></tr>
+    <tr><td>Stream</td><td><code>s.listen(onData, onError:, onDone:)</code></td><td>plusieurs valeurs dans le temps ; single ou broadcast</td></tr>
+    <tr><td>Générateur</td><td><code>Stream&lt;int&gt; g() async* { yield 1; }</code></td><td>démarre au listen ; yield* délègue</td></tr>
+    <tr><td>await for</td><td><code>await for (var v in s) { }</code></td><td>dans une fonction async ; break = cancel</td></tr>
+    <tr><td>Opérateurs</td><td><code>map where distinct take asyncMap</code></td><td>paresseux ; terminaux : toList, first, length</td></tr>
+    <tr><td>StreamController</td><td><code>c.add(v); c.addError(e); c.close(); c.stream</code></td><td>broadcast() pour plusieurs abonnés ; fermer dans dispose</td></tr>
+    <tr><td>Flutter</td><td><code>FutureBuilder</code> / <code>StreamBuilder</code>, <code>snapshot</code></td><td>Future créé dans initState ; tester mounted après await</td></tr>
+    <tr><td>Isolate</td><td><code>await Isolate.run(() =&gt; lourd())</code> / <code>compute</code></td><td>calcul CPU ; mémoire séparée, messages copiés</td></tr>
+    <tr><td>Debounce</td><td><code>Timer(Duration(milliseconds: 400), …)</code></td><td>annuler le timer précédent à chaque frappe</td></tr>
+  </table></div>
+</section>
+
+<footer class="end">Supplément réalisé à partir du cours « Développement des applications multi-plateforme », Mohamed Goumih, OFPPT CMC Agadir.</footer>
+</div>
+</main>
+</div>
+
+<script>
+(function(){
+"use strict";
+const $ = (s, r) => (r||document).querySelector(s);
+const $$ = (s, r) => Array.from((r||document).querySelectorAll(s));
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- storage ---------- */
+const KEY = 'dart-supp3-v1';
+let state = { done:{}, best:null };
+try { const raw = localStorage.getItem(KEY); if (raw) state = Object.assign(state, JSON.parse(raw) || {}); } catch(e) {}
+if (!state.done || typeof state.done !== 'object') state.done = {};
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e) {} }
+
+/* ---------- syntax highlight ---------- */
+const KW = 'void|var|final|const|late|dynamic|if|else|switch|case|default|break|continue|for|in|while|do|return|true|false|null|import|as|is|new|class|enum|extension|on|typedef|required|when|async|await|this|get|set|try|catch|throw|async|await|yield|sync|static|abstract|extends|implements|with|mixin|factory|super|override|rethrow|finally|on';
+const BT = 'int|double|num|bool';
+const RE = new RegExp(String.raw`(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|('''[\s\S]*?'''|"""[\s\S]*?"""|r'[^'\n]*'|r"[^"\n]*"|'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*")|\b(0x[0-9A-Fa-f]+|\d+(?:\.\d+)?)\b|\b(${KW})\b|\b(${BT}|[A-Z][A-Za-z0-9_]*)\b|\b([a-z_][A-Za-z0-9_]*)(?=\s*\()`, 'g');
+function hlStr(s){
+  if (s[0] === 'r') return esc(s);
+  return esc(s).replace(/\$\{[^}]*\}|\$[A-Za-z_]\w*/g, x => '<span class="tk-i">' + x + '</span>');
+}
+function hl(code){
+  let out = '', last = 0, m;
+  RE.lastIndex = 0;
+  while ((m = RE.exec(code)) !== null) {
+    out += esc(code.slice(last, m.index));
+    if (m[1]) out += '<span class="tk-c">' + esc(m[1]) + '</span>';
+    else if (m[2]) out += '<span class="tk-s">' + hlStr(m[2]) + '</span>';
+    else if (m[3]) out += '<span class="tk-n">' + esc(m[3]) + '</span>';
+    else if (m[4]) out += '<span class="tk-k">' + esc(m[4]) + '</span>';
+    else if (m[5]) out += '<span class="tk-t">' + esc(m[5]) + '</span>';
+    else if (m[6]) out += '<span class="tk-f">' + esc(m[6]) + '</span>';
+    last = m.index + m[0].length;
+    if (m[0].length === 0) RE.lastIndex++;
+  }
+  return out + esc(code.slice(last));
+}
+function copyText(text, btn){
+  const done = () => { const o = btn.textContent; btn.textContent = 'Copié'; setTimeout(() => btn.textContent = o, 1300); };
+  const fallback = () => {
+    const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); done(); } catch(e) { btn.textContent = 'Échec'; }
+    ta.remove();
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback);
+  else fallback();
+}
+$$('script[type="text/x-dart"]').forEach(sc => {
+  const code = sc.textContent.replace(/^\n/, '').replace(/\s+$/, '');
+  const box = document.createElement('div');
+  box.className = 'code';
+  box.innerHTML = '<div class="bar"><span class="file">' + esc(sc.dataset.file || 'dart') + '</span><span class="grow"></span><button type="button">Copier</button></div><pre><code>' + hl(code) + '</code></pre>';
+  box.querySelector('button').addEventListener('click', e => copyText(code, e.currentTarget));
+  sc.replaceWith(box);
+});
+function renderLines(el, lines){ el.innerHTML = lines.map(l => '<div>' + (hl(l) || ' ') + '</div>').join(''); return $$('div', el); }
+
+/* ---------- TOC + progress ---------- */
+const chaps = $$('section.chap');
+const counted = chaps.filter(s => !s.dataset.nocount);
+const tocList = $('#tocList');
+tocList.innerHTML = chaps.map(s => (s.id === 'quiz' ? '<li class="sep" aria-hidden="true"></li>' : '') +
+  '<li><a href="#' + s.id + '" data-id="' + s.id + '"><span class="n">' + esc($('.num', s).textContent) + '</span><span class="t">' + esc(s.dataset.title) + '</span>' + (s.dataset.nocount ? '' : '<span class="ck" aria-hidden="true"></span>') + '</a></li>').join('');
+counted.forEach(s => {
+  const l = document.createElement('label');
+  l.className = 'done-toggle';
+  l.innerHTML = '<input type="checkbox"> J\'ai compris ce chapitre';
+  const cb = $('input', l);
+  cb.checked = !!state.done[s.id];
+  cb.addEventListener('change', () => { state.done[s.id] = cb.checked; save(); updProg(); });
+  s.appendChild(l);
+});
+function updProg(){
+  const n = counted.filter(s => state.done[s.id]).length;
+  $('#progLbl').textContent = n + ' / ' + counted.length + ' compris';
+  $('#progBar').style.width = (100 * n / counted.length) + '%';
+  $$('#tocList a').forEach(a => {
+    a.classList.toggle('done', !!state.done[a.dataset.id]);
+    if (!a.dataset.nocount && state.done[a.dataset.id]) a.setAttribute('aria-label', a.textContent + ' (compris)');
+  });
+}
+updProg();
+const toc = $('#toc'), menuBtn = $('#menuBtn');
+menuBtn.addEventListener('click', () => { const o = toc.classList.toggle('open'); menuBtn.setAttribute('aria-expanded', o); });
+tocList.addEventListener('click', e => { if (e.target.closest('a')) { toc.classList.remove('open'); menuBtn.setAttribute('aria-expanded', 'false'); } });
+if ('IntersectionObserver' in window) {
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(en => {
+      if (en.isIntersecting) {
+        $$('#tocList a').forEach(a => a.classList.toggle('active', a.dataset.id === en.target.id));
+      }
+    });
+  }, { rootMargin: '-35% 0px -60% 0px' });
+  chaps.forEach(c => io.observe(c));
+}
+
+/* ---------- inline checks ---------- */
+$$('.check').forEach(ch => {
+  const ans = +ch.dataset.ans, btns = $$('.opts button', ch), ex = $('.explain', ch);
+  btns.forEach((b, i) => b.addEventListener('click', () => {
+    if (ch.classList.contains('answered')) return;
+    ch.classList.add('answered');
+    if (i !== ans) b.classList.add('wrong');
+    btns[ans].classList.add('right');
+    ex.innerHTML = '<b>' + (i === ans ? 'Exact.' : 'Pas tout à fait.') + '</b> ' + ex.innerHTML;
+  }));
+});
+
+/* ---------- generic tabs ---------- */
+$$('[data-tabs]').forEach(g => {
+  const name = g.dataset.tabs;
+  $$('button', g).forEach(b => b.addEventListener('click', () => {
+    $$('button', g).forEach(x => x.setAttribute('aria-selected', x === b));
+    $$('[data-panel="' + name + '"]').forEach(p => p.hidden = p.dataset.name !== b.dataset.tab);
+  }));
+});
+function seg(el, cb){
+  $$('button', el).forEach(b => b.addEventListener('click', () => {
+    $$('button', el).forEach(x => x.setAttribute('aria-selected', x === b)); cb(b);
+  }));
+}
+
+/* ---------- hero ---------- */
+(function(){
+  const inp = $('#heroName'), ms = $('#heroMs'), out = $('#heroOut');
+  let t1 = null, t2 = null;
+  function run(){
+    clearTimeout(t1); clearTimeout(t2);
+    const d = Math.max(0, Math.min(5000, parseInt(ms.value, 10) || 0));
+    out.textContent = 'Chargement…';
+    t1 = setTimeout(() => { out.textContent = 'Chargement…\nDonnées de ' + inp.value; t2 = setTimeout(() => { out.textContent += '\nTerminé'; }, 250); }, reduced ? 0 : d);
+  }
+  out.style.whiteSpace = 'pre-wrap';
+  $('#heroRun').addEventListener('click', run);
+  [inp, ms].forEach(el => el.addEventListener('keydown', e => { if (e.key === 'Enter') run(); }));
+  inp.addEventListener('input', () => { inp.style.width = Math.max(4, inp.value.length + 1) + 'ch'; });
+})();
+
+/* ---------- 1. UI gelée ---------- */
+(function(){
+  const spin = $('#fzSpin'), bar = $('#fzBar'), txt = $('#fzTxt'), out = $('#fzOut'), clicks = $('#fzClicks'), btn = $('#fzClick');
+  let n = 0, busy = false, frozen = false, pending = 0;
+  btn.addEventListener('click', () => { if (frozen) { pending++; return; } n++; clicks.textContent = n; });
+  function log(s){ out.innerHTML += (out.innerHTML ? '\n' : '') + s; out.scrollTop = out.scrollHeight; }
+  function reset(){ out.innerHTML = ''; n = 0; pending = 0; clicks.textContent = '0'; bar.style.transition = 'none'; bar.style.width = '0'; }
+  $('#fzSync').addEventListener('click', () => {
+    if (busy) return; busy = true; frozen = true; reset();
+    log('<span class="cmd">var data = chargerSync();</span>  <span class="er">// le fil d\'exécution est occupé 3 s</span>');
+    spin.classList.add('stuck'); txt.textContent = 'interface figée : le spinner ne tourne plus, les clics sont mis en attente';
+    setTimeout(() => {
+      spin.classList.remove('stuck'); frozen = false; busy = false;
+      bar.style.transition = 'width .2s'; bar.style.width = '100%';
+      txt.textContent = 'terminé';
+      log('<span class="ok">données reçues</span> après 3 s · ' + pending + ' clic(s) arrivé(s) d\'un coup, trop tard');
+      n += pending; clicks.textContent = n; pending = 0;
+    }, 3000);
+  });
+  $('#fzAsync').addEventListener('click', () => {
+    if (busy) return; busy = true; reset();
+    log('<span class="cmd">var data = await chargerAsync();</span>  <span class="ok">// la boucle reste libre</span>');
+    txt.textContent = 'chargement en cours… l\'interface répond';
+    bar.style.transition = 'width 3s linear'; requestAnimationFrame(() => bar.style.width = '100%');
+    setTimeout(() => { busy = false; txt.textContent = 'terminé'; log('<span class="ok">données reçues</span> après 3 s · ' + n + ' clic(s) traité(s) pendant l\'attente'); }, 3000);
+  });
+})();
+
+/* ---------- 2. event loop ---------- */
+(function(){
+  const M = $('#elMain'), Mi = $('#elMicro'), Ev = $('#elEvent'), out = $('#elOut'), note = $('#elNote');
+  const prog = [
+    { run: "print('A')", out: 'A', note: 'Code synchrone : s\'exécute tout de suite.' },
+    { run: "Future(() => print('B'))", micro: null, event: 'B', note: 'Future(...) planifie B dans la file des événements.' },
+    { run: "Future.microtask(() => print('C'))", micro: 'C', note: 'Une microtâche : file prioritaire.' },
+    { run: "Future.delayed(zero, () => print('D'))", event: 'D', note: 'Un timer, même à zéro, passe par la file des événements.' },
+    { run: "scheduleMicrotask(() => print('E'))", micro: 'E', note: 'Deuxième microtâche, derrière C.' },
+    { run: "print('F')", out: 'F', note: 'Fin du code synchrone de main().' },
+    { pop: 'micro', out: 'C', note: 'main() terminé : la boucle vide d\'abord les microtâches.' },
+    { pop: 'micro', out: 'E', note: 'Toutes les microtâches avant le moindre événement.' },
+    { pop: 'event', out: 'B', note: 'Un événement, puis retour aux microtâches (vides).' },
+    { pop: 'event', out: 'D', note: 'Dernier événement : B avant D car planifié avant.' }
+  ];
+  let k = -1, timer = null, micro = [], event = [], mainLines = prog.filter(p => p.run).map(p => p.run);
+  function chip(t, cls){ return '<span class="elchip ' + (cls || '') + '">' + esc(t) + '</span>'; }
+  function paint(){
+    M.innerHTML = mainLines.map((l, i) => chip(l, i < Math.min(k + 1, 6) ? (i === k ? 'on' : 'done') : '')).join('');
+    Mi.innerHTML = micro.map((x, i) => chip('print(' + x + ')', i === 0 && k >= 6 ? 'next' : '')).join('') || '<span class="elempty">vide</span>';
+    Ev.innerHTML = event.map((x, i) => chip('print(' + x + ')', i === 0 && k >= 8 ? 'next' : '')).join('') || '<span class="elempty">vide</span>';
+  }
+  function step(){
+    if (k >= prog.length - 1) { stop(); return; }
+    k++; const p = prog[k];
+    if (p.micro) micro.push(p.micro);
+    if (p.event) event.push(p.event);
+    if (p.pop === 'micro') micro.shift();
+    if (p.pop === 'event') event.shift();
+    if (p.out) out.innerHTML += (out.innerHTML ? ' ' : '') + '<span class="ok">' + p.out + '</span>';
+    note.textContent = p.note; paint();
+    if (k >= prog.length - 1) stop();
+  }
+  function stop(){ clearInterval(timer); timer = null; $('#elPlay').textContent = '▶ Lire'; }
+  function reset(){ stop(); k = -1; micro = []; event = []; out.innerHTML = ''; note.textContent = ''; paint(); }
+  $('#elNext').addEventListener('click', () => { stop(); step(); });
+  $('#elReset').addEventListener('click', reset);
+  $('#elPlay').addEventListener('click', () => { if (timer) { stop(); return; } if (k >= prog.length - 1) reset(); step(); $('#elPlay').textContent = '❚❚ Pause'; timer = setInterval(step, 1400); });
+  reset();
+})();
+
+/* ---------- 3. future lifecycle ---------- */
+(function(){
+  let mode = 'ok', busy = false;
+  const f1 = $('#ftFill'), f2 = $('#ftFill2'), s2 = $('#ft2'), s1 = $('#ft1'), out = $('#ftOut');
+  seg($('#ftSeg'), b => mode = b.dataset.k);
+  $('#ftPlay').addEventListener('click', () => {
+    if (busy) return; busy = true;
+    f1.style.transition = 'none'; f2.style.transition = 'none'; f1.style.width = '0'; f2.style.width = '0'; s2.textContent = '?'; s2.className = 'ftst'; s1.textContent = 'en attente…';
+    out.innerHTML = '<span class="cmd">var f = lireNote();</span>  → Future&lt;int&gt; en attente\n<span class="cmd">f.then(...).catchError(...).whenComplete(...);</span>  → gestionnaires enregistrés\n<span class="cmd">print(\'Après\');</span>  → <span class="ok">Après</span>   (main continue)';
+    requestAnimationFrame(() => { f1.style.transition = 'width .6s'; f1.style.width = '100%'; });
+    setTimeout(() => { f2.style.transition = 'width 1.2s linear'; f2.style.width = '100%'; }, 650);
+    setTimeout(() => {
+      busy = false; s1.textContent = 'terminé';
+      if (mode === 'ok') { s2.textContent = 'valeur : 17'; s2.className = 'ftst ok'; out.innerHTML += '\n<span class="ok">then</span> → Note : 17\n<span class="ok">whenComplete</span> → Fini'; }
+      else { s2.textContent = 'erreur'; s2.className = 'ftst err'; out.innerHTML += '\n<span class="er">catchError</span> → Erreur : Exception: réseau indisponible\n<span class="ok">whenComplete</span> → Fini'; }
+    }, 1900);
+  });
+})();
+
+/* ---------- 4. await trace ---------- */
+(function(){
+  const code = ["Future<String> telecharger(String url) async {", "  await Future.delayed(Duration(seconds: 1));", "  return 'contenu de $url';", "}", "", "Future<void> main() async {", "  print('1. début');", "  var page = await telecharger('goumih.ma');", "  print('2. $page');", "  print('3. fin');", "}"];
+  const steps = [
+    { l: 6, out: '1. début', note: 'main() démarre : code synchrone.' },
+    { l: 7, note: 'Appel de telecharger() : on entre dans la fonction.' },
+    { l: 1, note: 'await sur un délai de 1 s : telecharger() se met en pause et renvoie un Future en attente à main().' },
+    { l: 7, note: 'main() reçoit un Future en attente et, à cause de son propre await, se met en pause à son tour. La boucle d\'événements est libre : l\'interface répond, d\'autres tâches tournent.' },
+    { l: 1, note: '1 s plus tard, le timer arrive dans la file des événements : telecharger() reprend après son await.' },
+    { l: 2, note: 'return : le Future de telecharger() est terminé avec la chaîne.' },
+    { l: 7, note: 'La fin de l\'await de main() est planifiée en microtâche : page reçoit la valeur.' },
+    { l: 8, out: '2. contenu de goumih.ma', note: 'main() reprend là où il s\'était arrêté.' },
+    { l: 9, out: '3. fin', note: 'Fin de main() : le programme se termine quand plus rien n\'est planifié.' }
+  ];
+  const lines = renderLines($('#awLines'), code), out = $('#awOut'), note = $('#awNote'), st = $('#awStep');
+  let k = -1, timer = null;
+  function show(){ lines.forEach(l => l.classList.remove('on', 'skip')); out.innerHTML = ''; for (let i = 0; i <= k; i++) { if (steps[i].out) out.innerHTML += (out.innerHTML ? '\n' : '') + '<span class="' + (i === k ? 'ok' : '') + '">' + esc(steps[i].out) + '</span>'; } if (k >= 0) lines[steps[k].l].classList.add('on'); note.textContent = k >= 0 ? steps[k].note : 'Cliquez sur ▶ Lire.'; st.textContent = (k + 1) + ' / ' + steps.length; if (k >= steps.length - 1) stop(); }
+  function stop(){ clearInterval(timer); timer = null; $('#awPlay').textContent = '▶ Lire'; }
+  function next(){ if (k < steps.length - 1) { k++; show(); } else stop(); }
+  $('#awNext').addEventListener('click', () => { stop(); next(); });
+  $('#awPrev').addEventListener('click', () => { stop(); if (k > -1) { k--; show(); } });
+  $('#awPlay').addEventListener('click', () => { if (timer) { stop(); return; } if (k >= steps.length - 1) k = -1; next(); $('#awPlay').textContent = '❚❚ Pause'; timer = setInterval(next, 2200); });
+  show();
+})();
+
+/* ---------- 4b. Future.wait race ---------- */
+(function(){
+  const seq = $('#wtSeq'), par = $('#wtPar'), txt = $('#wtTxt');
+  const D = [1000, 1000, 1000];
+  function bars(el, stacked){ el.innerHTML = D.map((d, i) => '<div class="wtbar" style="' + (stacked ? 'left:' + (i * 33.3) + '%;width:' + 33.3 + '%' : 'left:0;width:' + 33.3 + '%;top:' + (i * 11) + 'px') + '"><i></i><span>lire(\'' + 'abc'[i] + '\')</span></div>').join(''); }
+  bars(seq, true); bars(par, false);
+  let busy = false;
+  $('#wtPlay').addEventListener('click', () => {
+    if (busy) return; busy = true; txt.textContent = 'chrono…';
+    $$('.wtbar i', seq).forEach(i => { i.style.transition = 'none'; i.style.width = '0'; }); $$('.wtbar i', par).forEach(i => { i.style.transition = 'none'; i.style.width = '0'; });
+    const t0 = performance.now();
+    requestAnimationFrame(() => {
+      $$('.wtbar i', par).forEach(i => { i.style.transition = 'width 1s linear'; i.style.width = '100%'; });
+      $$('.wtbar i', seq).forEach((i, k) => setTimeout(() => { i.style.transition = 'width 1s linear'; i.style.width = '100%'; }, k * 1000));
+    });
+    setTimeout(() => txt.textContent = 'Future.wait terminé en ~1 s… la version en série continue', 1050);
+    setTimeout(() => { txt.textContent = 'en série : 3 s · Future.wait : 1 s · (' + Math.round(performance.now() - t0) + ' ms réels)'; busy = false; }, 3050);
+  });
+})();
+
+/* ---------- 5. erreurs ---------- */
+(function(){
+  const w = $('#erWhere'), h = $('#erHow'), out = $('#erOut');
+  function show(){
+    const err = w.value === 'arg' ? 'ArgumentError: division par zéro' : w.value === 'fmt' ? 'FormatException: nombre attendu' : null;
+    let r = '';
+    if (h.value === 'await') {
+      r = '<span class="cmd">try { print(await diviser(1, ' + (err ? '0' : '2') + ')); }</span>\n';
+      if (!err) r += '<span class="ok">→ 0</span>  (aucune erreur)\n<span class="ok">finally</span> → nettoyage';
+      else if (w.value === 'arg') r += '<span class="hl">on ArgumentError catch (e)</span> → Argument : division par zéro\n<span class="ok">finally</span> → nettoyage';
+      else r += '<span class="hl">catch (e, stack)</span> → Autre erreur : ' + err + '\n<span class="ok">finally</span> → nettoyage';
+    } else if (h.value === 'then') {
+      r = '<span class="cmd">diviser(1, ' + (err ? '0' : '2') + ').then(print);</span>\n' + (err ? '<span class="er">Unhandled exception: ' + err + '</span>\n<span class="p">Personne n\'a attrapé l\'erreur : le try/catch autour de l\'appel ne sert à rien sans await.</span>' : '<span class="ok">→ 0</span>');
+    } else {
+      r = '<span class="cmd">diviser(1, ' + (err ? '0' : '2') + ').then(print).catchError((e) => print(\'attrapée : $e\'));</span>\n' + (err ? '<span class="ok">→ attrapée : ' + err + '</span>' : '<span class="ok">→ 0</span>');
+    }
+    out.innerHTML = r;
+  }
+  [w, h].forEach(e => e.addEventListener('change', show)); show();
+})();
+
+/* ---------- 6. stream emitter ---------- */
+(function(){
+  let mode = 'single', n = 0, subs = { A: false, B: false }, closed = false, buffer = [];
+  const line = $('#emLine'), out = $('#emOut'), LA = $('#emA div'), LB = $('#emB div');
+  function log(s){ out.innerHTML += (out.innerHTML ? '\n' : '') + s; out.scrollTop = out.scrollHeight; }
+  function reset(){ n = 0; subs = { A: false, B: false }; closed = false; buffer = []; LA.innerHTML = ''; LB.innerHTML = ''; out.innerHTML = ''; line.innerHTML = ''; $('#emA').classList.remove('on'); $('#emB').classList.remove('on'); }
+  seg($('#emSeg'), b => { mode = b.dataset.k; reset(); log('<span class="p">stream ' + mode + ' créé</span>'); });
+  function deliver(v){ ['A', 'B'].forEach(k => { if (subs[k]) { const d = document.createElement('span'); d.className = 'emdot'; d.textContent = v; line.appendChild(d); requestAnimationFrame(() => d.classList.add('go')); setTimeout(() => { d.remove(); (k === 'A' ? LA : LB).innerHTML += '<span class="emv">' + v + '</span>'; }, reduced ? 0 : 900); } }); }
+  $('#emAdd').addEventListener('click', () => {
+    if (closed) { log('<span class="er">Bad state: Cannot add event after closing</span>'); return; }
+    n++; const any = subs.A || subs.B;
+    if (!any) { if (mode === 'single') { buffer.push(n); log('add(' + n + ') → <span class="hl">mis en attente</span> (personne n\'écoute encore)'); } else log('add(' + n + ') → <span class="er">perdu</span> (broadcast sans abonné)'); return; }
+    log('add(' + n + ')'); deliver(n);
+  });
+  function listen(k){
+    if (closed) { log('<span class="er">listen() sur un stream fermé : onDone immédiat</span>'); return; }
+    if (mode === 'single' && (subs.A || subs.B)) { log('<span class="er">Bad state: Stream has already been listened to.</span>'); return; }
+    subs[k] = true; $('#em' + k).classList.add('on'); log('listen() ' + k);
+    if (buffer.length) { log('→ les ' + buffer.length + ' événement(s) en attente sont livrés'); buffer.forEach(v => deliver(v)); buffer = []; }
+  }
+  $('#emL1').addEventListener('click', () => listen('A')); $('#emL2').addEventListener('click', () => listen('B'));
+  $('#emCancel').addEventListener('click', () => { if (!subs.A) return; subs.A = false; $('#emA').classList.remove('on'); log('cancel() A → A ne reçoit plus rien' + (mode === 'single' ? ' ; le stream peut être réécouté ? Non : single-subscription, c\'est fini.' : '')); });
+  $('#emDone').addEventListener('click', () => { if (closed) return; closed = true; log('close() → <span class="ok">onDone</span> chez ' + (['A', 'B'].filter(k => subs[k]).join(', ') || 'personne')); });
+  log('<span class="p">stream single-subscription créé</span>');
+})();
+
+/* ---------- 7. generator ---------- */
+(function(){
+  const code = ["Stream<int> compteARebours(int depart) async* {", "  for (var i = depart; i >= 0; i--) {", "    await Future.delayed(Duration(seconds: 1));", "    yield i;", "  }", "}", "", "await for (var v in compteARebours(2)) {", "  print(v);", "  if (v == 1) break;", "}", "print('décollage');"];
+  const steps = [
+    { l: 7, note: 'await for appelle compteARebours(2) : le générateur est créé mais ne démarre qu\'à l\'écoute… qui commence maintenant.', p: 'démarre', c: 'attend' },
+    { l: 1, note: 'i = 2', p: 'i = 2', c: 'attend' },
+    { l: 2, note: 'await 1 s : le générateur est en pause, l\'abonné attend.', p: 'pause 1 s', c: 'attend' },
+    { l: 3, note: 'yield 2 : la valeur part vers l\'abonné, le générateur attend qu\'elle soit traitée.', p: 'yield 2', c: 'reçoit 2', arrow: true },
+    { l: 8, out: '2', note: 'print(2) côté consommateur.', p: 'en attente', c: 'v = 2' },
+    { l: 9, note: 'v == 1 ? non : on continue.', p: 'en attente', c: 'v = 2' },
+    { l: 1, note: 'i = 1', p: 'i = 1', c: 'attend' },
+    { l: 2, note: 'await 1 s', p: 'pause 1 s', c: 'attend' },
+    { l: 3, note: 'yield 1', p: 'yield 1', c: 'reçoit 1', arrow: true },
+    { l: 8, out: '1', note: 'print(1)', p: 'en attente', c: 'v = 1' },
+    { l: 9, note: 'v == 1 : break → l\'abonnement est annulé, le générateur est arrêté (il n\'émettra jamais 0).', p: 'annulé', c: 'break' },
+    { l: 11, out: 'décollage', note: 'La suite du code s\'exécute.', p: '—', c: '—' }
+  ];
+  const lines = renderLines($('#gnLines'), code), out = $('#gnOut'), note = $('#gnNote'), P = $('#gnProd'), C = $('#gnCons'), arrow = $('#gnArrow');
+  let k = -1, timer = null;
+  function show(){ lines.forEach(l => l.classList.remove('on')); out.innerHTML = ''; for (let i = 0; i <= k; i++) if (steps[i].out) out.innerHTML += (out.innerHTML ? '\n' : '') + esc(steps[i].out); if (k >= 0) { lines[steps[k].l].classList.add('on'); P.textContent = steps[k].p; C.textContent = steps[k].c; arrow.classList.toggle('go', !!steps[k].arrow); note.textContent = steps[k].note + ' (' + (k + 1) + '/' + steps.length + ')'; } else { P.textContent = '—'; C.textContent = '—'; note.textContent = ''; arrow.classList.remove('go'); } if (k >= steps.length - 1) stop(); }
+  function stop(){ clearInterval(timer); timer = null; $('#gnPlay').textContent = '▶ Lire'; }
+  function next(){ if (k < steps.length - 1) { k++; show(); } else stop(); }
+  $('#gnNext').addEventListener('click', () => { stop(); next(); }); $('#gnReset').addEventListener('click', () => { stop(); k = -1; show(); });
+  $('#gnPlay').addEventListener('click', () => { if (timer) { stop(); return; } if (k >= steps.length - 1) k = -1; next(); $('#gnPlay').textContent = '❚❚ Pause'; timer = setInterval(next, 1700); });
+  show();
+})();
+
+/* ---------- 8. pipeline ---------- */
+(function(){
+  const stages = $$('#ppPipe .pst'), out = $('#ppOut');
+  let busy = false;
+  $('#ppPlay').addEventListener('click', () => {
+    if (busy) return; busy = true; out.innerHTML = ''; stages.forEach(s => { s.querySelector('span').textContent = ''; s.classList.remove('hit', 'drop'); });
+    const add = +$('#ppMap').value || 0, thr = +$('#ppWhere').value || 0, take = Math.max(1, +$('#ppTake').value || 1);
+    const src = [0, 7, 14, 21, 28, 35, 2, 9]; let seen = new Set(), taken = 0, i = 0;
+    function one(){
+      if (i >= src.length || taken >= take) { busy = false; out.innerHTML += (out.innerHTML ? '\n' : '') + '<span class="p">' + (taken >= take ? 'take(' + take + ') atteint : le pipeline se désabonne de la source.' : 'source épuisée → onDone') + '</span>'; return; }
+      const v = src[i++]; const m = v + add; let line = 'source ' + v + ' → map ' + m;
+      const flash = (k, txt, cls) => { const s = stages[k]; s.querySelector('span').textContent = txt; s.classList.remove('hit', 'drop'); void s.offsetWidth; s.classList.add(cls || 'hit'); };
+      flash(0, v); setTimeout(() => flash(1, m), 250);
+      setTimeout(() => {
+        if (m > thr) { flash(2, m); line += ' → where ✓';
+          setTimeout(() => { if (!seen.has(m)) { seen.add(m); flash(3, m); line += ' → distinct ✓';
+              setTimeout(() => { taken++; flash(4, taken + '/' + take); flash(5, m); line += ' → take → <span class="ok">listen(' + m + ')</span>'; out.innerHTML += (out.innerHTML ? '\n' : '') + line; setTimeout(one, 500); }, 250);
+            } else { flash(3, m, 'drop'); line += ' → distinct <span class="er">✗ (déjà vu)</span>'; out.innerHTML += (out.innerHTML ? '\n' : '') + line; setTimeout(one, 500); } }, 250);
+        } else { flash(2, m, 'drop'); line += ' → where <span class="er">✗ (' + m + ' ≤ ' + thr + ')</span>'; out.innerHTML += (out.innerHTML ? '\n' : '') + line; setTimeout(one, 500); }
+      }, 500);
+    }
+    one();
+  });
+})();
+
+/* ---------- 9. controller ---------- */
+(function(){
+  const out = $('#ctOut');
+  let total = 0, closed = false, bc = true, listeners = 1;
+  function log(s){ out.innerHTML += (out.innerHTML ? '\n' : '') + s; out.scrollTop = out.scrollHeight; }
+  function fresh(){ total = 0; closed = false; listeners = 1; bc = $('#ctBc').checked; out.innerHTML = '<span class="p">var c = StreamController&lt;int&gt;' + (bc ? '.broadcast()' : '()') + ';  c.stream.listen(...)  // abonné 1</span>'; }
+  $('#ctAdd').addEventListener('click', () => { if (closed) { log('<span class="er">Bad state: Cannot add event after closing</span>'); return; } total += +$('#ctPrix').value || 0; log('<span class="cmd">c.add(' + total + ')</span> → ' + Array.from({ length: listeners }, (_, i) => 'abonné ' + (i + 1) + ' : Total : ' + total).join(' · ')); });
+  $('#ctErr').addEventListener('click', () => { if (closed) { log('<span class="er">Bad state: Cannot add event after closing</span>'); return; } log('<span class="cmd">c.addError(StateError(\'stock épuisé\'))</span> → <span class="er">onError : Bad state: stock épuisé</span>  (le stream continue)'); });
+  $('#ctClose').addEventListener('click', () => { if (closed) return; closed = true; log('<span class="cmd">c.close()</span> → <span class="ok">onDone</span> chez ' + listeners + ' abonné(s)'); });
+  $('#ctL2').addEventListener('click', () => { if (closed) { log('<span class="er">listen() après close() : onDone immédiat</span>'); return; } if (!bc) { log('<span class="er">Bad state: Stream has already been listened to.</span>  <span class="p">(controller non broadcast)</span>'); return; } listeners++; log('<span class="cmd">c.stream.listen(...)</span>  // abonné ' + listeners + ' — il ne reçoit pas les anciens événements'); });
+  $('#ctReset').addEventListener('click', fresh); $('#ctBc').addEventListener('change', fresh);
+  fresh();
+})();
+
+/* ---------- 10. snapshot ---------- */
+(function(){
+  let mode = 'future', busy = false;
+  const states = $('#snStates'), W = $('#snWidget'), out = $('#snOut');
+  seg($('#snSeg'), b => { mode = b.dataset.k; paint([]); });
+  function paint(active, ...rest){ const S = mode === 'future' ? ['none', 'waiting', 'done'] : ['none', 'waiting', 'active', 'done']; states.innerHTML = S.map(s => '<span class="snst' + (active.indexOf(s) > -1 ? ' on' : '') + '">' + s + '</span>').join('<span class="ixarr">→</span>'); }
+  function run(withErr){
+    if (busy) return; busy = true; out.innerHTML = ''; const log = s => { out.innerHTML += (out.innerHTML ? '\n' : '') + s; };
+    if (mode === 'future') {
+      paint(['waiting']); W.innerHTML = '<div class="spin"></div>'; log('connectionState: waiting · hasData: false → <span class="hl">CircularProgressIndicator</span>');
+      setTimeout(() => { paint(['done']); if (withErr) { W.innerHTML = '<p class="err">Erreur : SocketException</p>'; log('connectionState: done · hasError: true → <span class="er">Text(\'Erreur : …\')</span>'); } else { W.innerHTML = '<p>Bonjour DEVOAM201 !</p>'; log('connectionState: done · hasData: true → <span class="ok">Text(snapshot.data!)</span>'); } busy = false; }, 1800);
+    } else {
+      paint(['waiting']); W.innerHTML = '<p>Total : 0</p>'; log('connectionState: waiting · data: 0 (initialData)');
+      let t = 0; const prices = [30, 12, 25];
+      prices.forEach((p, i) => setTimeout(() => { t += p; paint(['active']); W.innerHTML = '<p>Total : ' + t + '</p>'; log('connectionState: active · data: ' + t + ' → <span class="ok">reconstruit</span>'); }, 700 * (i + 1)));
+      setTimeout(() => { if (withErr) { paint(['active']); W.innerHTML = '<p class="err">stock épuisé</p>'; log('connectionState: active · hasError: true → <span class="er">message d\'erreur</span>'); } else { paint(['done']); log('connectionState: done (stream fermé) · data: ' + t + ' conservé'); } busy = false; }, 700 * 4);
+    }
+  }
+  $('#snPlay').addEventListener('click', () => run(false)); $('#snErr').addEventListener('click', () => run(true));
+  paint([]); W.innerHTML = '<p class="muted">—</p>';
+})();
+
+/* ---------- 11. isolate ---------- */
+(function(){
+  const ball = $('#isoBall'), fps = $('#isoFps'), prog = $('#isoProg'), txt = $('#isoTxt'), out = $('#isOut');
+  let busy = false;
+  function log(s){ out.innerHTML += (out.innerHTML ? '\n' : '') + s; }
+  $('#isMain').addEventListener('click', () => {
+    if (busy) return; busy = true; out.innerHTML = ''; log('<span class="cmd">final r = calculLourd(200000000);</span>  // dans l\'isolate principal');
+    ball.classList.add('frozen'); fps.textContent = '0 image / s : l\'animation est figée'; txt.textContent = 'inactif'; prog.style.width = '0';
+    setTimeout(() => { ball.classList.remove('frozen'); fps.textContent = '60 images / s'; log('<span class="ok">r = 599999997</span> après 2,5 s… pendant lesquelles rien ne bougeait'); busy = false; }, 2500);
+  });
+  $('#isWorker').addEventListener('click', () => {
+    if (busy) return; busy = true; out.innerHTML = ''; log('<span class="cmd">final r = await Isolate.run(() => calculLourd(200000000));</span>');
+    txt.textContent = 'calcul en cours…'; prog.style.transition = 'none'; prog.style.width = '0'; requestAnimationFrame(() => { prog.style.transition = 'width 2.5s linear'; prog.style.width = '100%'; });
+    fps.textContent = '60 images / s : l\'interface reste fluide';
+    setTimeout(() => { txt.textContent = 'résultat renvoyé par message'; log('<span class="ok">r = 599999997</span> après 2,5 s, sans aucune saccade'); busy = false; }, 2500);
+  });
+})();
+
+/* ---------- 12. debounce search ---------- */
+(function(){
+  const inp = $('#srIn'), tm = $('#srTimer'), req = $('#srReq'), fill = $('#srFill'), out = $('#srOut'), res = $('#srRes');
+  const DB = ['flutter', 'future', 'fonction', 'firebase', 'dart', 'debounce', 'stream', 'setState', 'scaffold', 'sqflite', 'async', 'await', 'isolate'];
+  let timer = null, n = 0, last = '', latest = 0, tick = null;
+  function log(s){ out.innerHTML += (out.innerHTML ? '\n' : '') + s; out.scrollTop = out.scrollHeight; }
+  inp.addEventListener('input', () => {
+    clearTimeout(timer); clearInterval(tick);
+    const t = inp.value.trim(); let left = 400; tm.textContent = '400 ms'; fill.style.transition = 'none'; fill.style.width = '0';
+    requestAnimationFrame(() => { fill.style.transition = 'width .4s linear'; fill.style.width = '100%'; });
+    tick = setInterval(() => { left -= 50; tm.textContent = Math.max(0, left) + ' ms'; if (left <= 0) clearInterval(tick); }, 50);
+    timer = setTimeout(() => {
+      tm.textContent = '—';
+      if (t === last) { log('<span class="p">distinct : « ' + esc(t) + ' » déjà cherché</span>'); return; }
+      last = t;
+      if (t.length < 2) { log('<span class="p">where : moins de 2 lettres, pas de requête</span>'); res.innerHTML = ''; return; }
+      const id = ++latest; n++; req.textContent = n;
+      const delay = 300 + Math.random() * 900;
+      log('requête #' + id + ' « ' + esc(t) + ' » envoyée (' + Math.round(delay) + ' ms)');
+      setTimeout(() => {
+        const r = DB.filter(x => x.startsWith(t.toLowerCase()));
+        if (id !== latest) { log('<span class="er">réponse #' + id + ' ignorée (périmée)</span>'); return; }
+        log('<span class="ok">réponse #' + id + ' : ' + r.length + ' résultat(s)</span>');
+        res.innerHTML = r.map(x => '<span class="srchip">' + esc(x) + '</span>').join('') || '<span class="muted">aucun résultat</span>';
+      }, delay);
+    }, 400);
+  });
+})();
+
+/* ---------- quiz ---------- */
+(function(){
+  const Q = [
+    { q: 'Qu\'affiche ce code ?', c: "print('a');\nFuture(() => print('b'));\nFuture.microtask(() => print('c'));\nprint('d');", o: ['a b c d', 'a d c b', 'a d b c', 'a c d b'], a: 1, e: 'Synchrone (a, d), puis microtâches (c), puis événements (b).' },
+    { q: 'Que vaut x ?', c: 'Future<int> f() async => 3;\nvar x = f();', o: ['3', 'Future<int>', 'null', 'Erreur'], a: 1, e: 'Sans await, on obtient le Future lui-même, pas sa valeur.' },
+    { q: 'Durée de await Future.wait([a(1 s), b(2 s)]) ?', o: ['1 s', '2 s', '3 s', '0 s'], a: 1, e: 'Les deux attentes démarrent ensemble : on attend la plus longue.' },
+    { q: 'Une erreur dans f() avec f().then(print) et rien d\'autre…', o: ['est ignorée', 'remonte en Unhandled exception', 'est renvoyée par then', 'ne compile pas'], a: 1, e: 'Un Future en erreur sans catchError ni await/try devient une erreur non gérée.' },
+    { q: 'Quelle fonction renvoie un Stream ?', o: ['Stream<int> f() async { yield 1; }', 'Stream<int> f() async* { yield 1; }', 'Future<int> f() async { return 1; }', 'Iterable<int> f() sync* { yield 1; }'], a: 1, e: 'async* + yield définit un générateur de Stream ; sync* donne un Iterable ; async un Future.' },
+    { q: 'listen() deux fois sur un stream single-subscription…', o: ['double les événements', 'lève une erreur', 'remplace l\'abonné', 'convertit en broadcast'], a: 1, e: 'Seuls les streams broadcast acceptent plusieurs abonnés.' },
+    { q: 'await for (var v in s) { if (v > 2) break; } — que fait break ?', o: ['met le stream en pause', 'annule l\'abonnement et sort de la boucle', 'ferme le StreamController', 'rien'], a: 1, e: 'break annule l\'abonnement, comme cancel() sur une StreamSubscription.' },
+    { q: 'Stream.fromIterable([1,2,3]).map((e) => e * 2).toList() renvoie…', o: ['[2, 4, 6]', 'Future<List<int>>', 'Stream<int>', 'Iterable<int>'], a: 1, e: 'toList() sur un stream est asynchrone : la liste arrive quand le flux est terminé.' },
+    { q: 'c.add(5) après c.close() sur un StreamController…', o: ['est livré en retard', 'lève Bad state', 'est mis en attente', 'rouvre le stream'], a: 1, e: 'Un controller fermé n\'accepte plus d\'événements.' },
+    { q: 'Où créer le Future passé à un FutureBuilder ?', o: ['dans build', 'dans initState (ou un champ final)', 'dans le builder', 'dans setState'], a: 1, e: 'Créé dans build, il serait relancé à chaque reconstruction.' },
+    { q: 'Pour trier 5 millions d\'éléments sans figer l\'interface…', o: ['async / await', 'Isolate.run ou compute', 'Future.microtask', 'StreamBuilder'], a: 1, e: 'Un calcul CPU n\'attend rien : seul un autre isolate libère la boucle d\'événements.' },
+    { q: 'Dans un champ de recherche, le debounce sert à…', o: ['accélérer la requête', 'attendre une pause dans la frappe avant d\'envoyer la requête', 'trier les résultats', 'annuler les erreurs'], a: 1, e: 'On relance un Timer à chaque frappe ; seule la dernière, après 400 ms de silence, déclenche l\'appel.' }
+  ];
+  const order = [2, 0, 3, 1, 2, 0, 1, 3, 0, 2, 3, 1];
+  Q.forEach((x, i) => { const correct = x.o[x.a], others = x.o.filter((_, k) => k !== x.a); const pos = order[i] % x.o.length; others.splice(pos, 0, correct); x.o = others; x.a = pos; });
+  const box = $('#quizBox');
+  let i = 0, score = 0;
+  function render(){
+    if (i >= Q.length) return end();
+    const x = Q[i];
+    box.innerHTML = '<div class="qn">Question ' + (i + 1) + ' sur ' + Q.length + '</div><div class="qt">' + esc(x.q) + '</div>' + (x.c ? '<pre>' + hl(x.c) + '</pre>' : '') +
+      '<div class="check" style="border:0;padding:0;margin:0"><div class="opts">' + x.o.map((o, k) => '<button data-k="' + k + '"><code>' + esc(o) + '</code></button>').join('') + '</div><p class="explain"></p></div>' +
+      '<div class="row" style="margin-top:14px"><button class="btn primary" id="qNext" hidden>' + (i === Q.length - 1 ? 'Voir mon score' : 'Question suivante') + '</button></div>';
+    const ch = $('.check', box), btns = $$('.opts button', box);
+    btns.forEach(b => b.addEventListener('click', () => { if (ch.classList.contains('answered')) return; ch.classList.add('answered'); const k = +b.dataset.k, ok = k === x.a; if (ok) score++; if (!ok) b.classList.add('wrong'); btns[x.a].classList.add('right'); $('.explain', ch).innerHTML = '<b>' + (ok ? 'Exact.' : 'Pas tout à fait.') + '</b> ' + esc(x.e); const nx = $('#qNext'); nx.hidden = false; nx.focus(); }));
+    $('#qNext').addEventListener('click', () => { i++; render(); });
+  }
+  function end(){
+    const best = Math.max(score, state.best || 0); state.best = best; save();
+    const msg = score === Q.length ? 'Parfait : l\'asynchrone Dart n\'a plus de secret pour vous.' : score >= 9 ? 'Très bien. Relisez les explications des questions manquées.' : score >= 6 ? 'Correct. Repassez par les chapitres où vous avez hésité, puis retentez.' : 'Reprenez les ateliers des chapitres concernés, puis retentez le quiz.';
+    box.innerHTML = '<div class="score-big">' + score + ' / ' + Q.length + '</div><p style="font-size:1.08rem;margin:10px 0 4px">' + esc(msg) + '</p><p class="out-type">Meilleur score enregistré : ' + best + ' / ' + Q.length + '</p><div class="row" style="margin-top:12px"><button class="btn primary" id="qAgain">Recommencer le quiz</button></div>';
+    $('#qAgain').addEventListener('click', () => { i = 0; score = 0; render(); });
+  }
+  if (state.best !== null && state.best !== undefined) { box.innerHTML = '<p>Meilleur score enregistré : <strong>' + state.best + ' / ' + Q.length + '</strong></p><button class="btn primary" id="qStart">Commencer le quiz</button>'; $('#qStart').addEventListener('click', render); } else render();
+})();
+
+})();
+</script>
+<script>
+/* GoumihEdu : export du contenu en blocs pour le supplément PDF / publication */
+window.GE_SUPPLEMENT=function(){var B=[];var tx=function(el){return (el.textContent||'').replace(/\s+/g,' ').trim()};
+  B.push({t:'h1',text:'Dart & Flutter — Supplément 3 : asynchrone, Streams et concurrence'});
+  var intro=document.querySelector('.hero p.intro');if(intro)B.push({t:'p',text:tx(intro)});
+  document.querySelectorAll('section.chap').forEach(function(sec){if(sec.id==='quiz')return;var h2=sec.querySelector('.chap-head h2'),pg=sec.querySelector('.chap-head .pages');
+    B.push({t:'h2',text:tx(h2)+(pg&&tx(pg)&&!/question/i.test(tx(pg))?' ('+tx(pg)+')':'')});
+    function walk(el){[].forEach.call(el.children,function(c){var cl=c.classList;
+      if(cl.contains('chap-head')||cl.contains('lab')||cl.contains('check')||cl.contains('done-toggle')||cl.contains('seg')||c.tagName==='SCRIPT'||c.tagName==='BUTTON')return;
+      if(c.tagName==='H3'||c.tagName==='H4'){B.push({t:'h3',text:tx(c)});return}
+      if(c.tagName==='P'){var s=tx(c);if(s)B.push({t:'p',text:s});return}
+      if(cl.contains('code')){var pre=c.querySelector('pre');var f=c.querySelector('.file');if(pre)B.push({t:'code',text:(f?'// '+tx(f)+'\n':'')+pre.textContent.replace(/\n+$/,'')});return}
+      if(cl.contains('note')){var h=c.querySelector('b.h');var items=[].map.call(c.querySelectorAll('li'),tx);var ps=[].map.call(c.querySelectorAll('p'),tx).filter(Boolean);B.push({t:'note',text:(h?tx(h)+' — ':'')+ps.join(' ')});if(items.length)B.push({t:'list',items:items});return}
+      if(cl.contains('tbl')){var rows=[].map.call(c.querySelectorAll('tr'),function(tr){return [].map.call(tr.children,tx)}).filter(function(r){return r.join('')});if(rows.length)B.push({t:'table',rows:rows});return}
+      if(c.tagName==='UL'||c.tagName==='OL'){var it=[].map.call(c.querySelectorAll(':scope>li'),tx).filter(Boolean);if(it.length)B.push({t:'list',items:it});return}
+      if(c.tagName==='DL'){var dd=[].map.call(c.querySelectorAll('div'),function(d){var a=d.querySelector('dt'),b=d.querySelector('dd');return tx(a)+' : '+tx(b)});if(dd.length)B.push({t:'list',items:dd});return}
+      if(cl.contains('tabpanel')){walk(c);return}
+      if(c.children.length)walk(c);else{var w=tx(c);if(w)B.push({t:'p',text:w})}})}
+    walk(sec)});
+  return B};
+</script>
+</body>
+</html>
