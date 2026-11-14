@@ -66,7 +66,11 @@ function eduPrFad(D,x,esc,fd){var m=(D.medias||[]).find(function(y){return (y.pr
     (D.livrables||[]).forEach(function(x){if(!x.date||!x.heure||!ok(x.groupIds))return;var b=at(x.date,x.heure),a=at(x.date,'00:00');if(t>=a&&t<=b)A.livr=1});
     (D.emploi||[]).forEach(function(x){if(!x.hd||(x.groupId&&gid&&x.groupId!==gid))return;var a=at(x.debut,x.hd),b=at(x.fin||x.debut,x.hf||'23:59');if(t>=a&&t<=b)A.edt=1});return A}
   function zone(){var z=document.getElementById('livetop');if(z)return z;var who=document.getElementById('who');if(!who)return null;z=document.createElement('div');z.id='livetop';z.className='livetop';z.hidden=true;z.innerHTML='<div class="livetop-h"><span class="livetop-dot"></span>En cours maintenant</div>';who.parentNode.insertBefore(z,who.nextSibling);return z}
-  function tick(){var A=act(),z=zone();if(!z)return;var n=0;Object.keys(SEC).forEach(function(k){var h=document.getElementById(SEC[k][0]),c=document.getElementById(SEC[k][1]);if(!h||!c)return;var ph=document.getElementById('ltph-'+k),inZ=h.parentNode===z;
+  function tick(){var A=act(),z=zone();if(!z)return;var n=0;
+    /* nettoyage : seules les sections en cours restent dans la zone */
+    var ref=z.nextSibling;[].slice.call(z.children).forEach(function(e){if(e.classList.contains('livetop-h'))return;var id=e.id||'',k=id.replace(/^[hs]-/,'').replace(/-note$/,'');if(e.parentNode!==z||(SEC[k]&&A[k]&&document.getElementById('ltph-'+k)))return;var ph=document.getElementById('ltph-'+k);
+      if(ph&&ph.parentNode){var hh=document.getElementById('h-'+k),cc=document.getElementById('s-'+k);if(hh&&hh.parentNode===z)ph.parentNode.insertBefore(hh,ph);if(cc&&cc.parentNode===z)ph.parentNode.insertBefore(cc,ph);if(e.parentNode===z)ph.parentNode.insertBefore(e,ph);ph.remove();[hh,cc].forEach(function(x){if(x){x.classList.remove('lt-on');x.removeAttribute('data-lt')}})}
+      else if(e.parentNode===z){z.parentNode.insertBefore(e,ref)}});Object.keys(SEC).forEach(function(k){var h=document.getElementById(SEC[k][0]),c=document.getElementById(SEC[k][1]);if(!h||!c)return;var ph=document.getElementById('ltph-'+k),inZ=h.parentNode===z;
       if(A[k]&&c.innerHTML.trim()){if(!inZ){if(!ph){ph=document.createElement('span');ph.id='ltph-'+k;ph.hidden=true;h.parentNode.insertBefore(ph,h)}z.appendChild(h);z.appendChild(c);h.classList.add('lt-on');c.classList.add('lt-on');h.setAttribute('data-lt',SEC[k][2])}n++}
       else if(inZ&&ph){ph.parentNode.insertBefore(h,ph);ph.parentNode.insertBefore(c,ph);ph.remove();h.classList.remove('lt-on');c.classList.remove('lt-on');h.removeAttribute('data-lt')}});z.hidden=!n}
   setTimeout(tick,600);window.__ltIv=setInterval(tick,20000);document.addEventListener('change',function(e){if(e.target&&e.target.id==='g')setTimeout(tick,300)})})(D);
@@ -620,7 +624,8 @@ setTimeout(function(){(function eduCats(D,mine){
   if(window.__waitIv)clearInterval(window.__waitIv);if(document.querySelector('.wait-b')){tick();window.__waitIv=setInterval(tick,1000)}
 })(D)}catch(e){console.error(e)}try{(function eduLayout(){
   function $(id){return document.getElementById(id)}
-  var first=document.querySelector('h2[id^="h-"]');if(!first)return;var wrap=first.parentNode;
+  var first=[].slice.call(document.querySelectorAll('h2[id^="h-"]')).filter(function(h){return !h.closest('#livetop')})[0];if(!first)return;var wrap=first.parentNode;
+  function inLT(k){var h=$('h-'+k);return h&&h.closest('#livetop')}
   /* ---------- 1. regroupement des sections ---------- */
   var G=[['travail','⚡','Travaux & examens','Ce qui est à faire et à préparer',['prat','livr','ech','res','infos']],
          ['cours','📚','Cours','Documents, corrections et compléments',['docs','med','cor','sup','taches','parties']],
@@ -629,9 +634,9 @@ setTimeout(function(){(function eduCats(D,mine){
   var foot=$('foot');var anchor=foot||null;
   var placed={};
   G.forEach(function(g){var gh=$('g-'+g[0]);if(gh)gh.remove();/* bandeaux de regroupement retirés : seules les sections restent */
-    g[4].forEach(function(k){var h=$('h-'+k),c=$('s-'+k),n=$('s-'+k+'-note');if(!h||!c)return;placed[k]=1;h.setAttribute('data-g',g[0]);wrap.insertBefore(h,anchor);if(n)wrap.insertBefore(n,anchor);wrap.insertBefore(c,anchor)})});
+    g[4].forEach(function(k){var h=$('h-'+k),c=$('s-'+k),n=$('s-'+k+'-note');if(!h||!c)return;placed[k]=1;if(inLT(k)){var ph=$('ltph-'+k);if(ph)wrap.insertBefore(ph,anchor);return}h.setAttribute('data-g',g[0]);wrap.insertBefore(h,anchor);if(n)wrap.insertBefore(n,anchor);wrap.insertBefore(c,anchor)})});
   /* sections non prévues : à la fin du dernier groupe */
-  [].slice.call(wrap.querySelectorAll('h2[id^="h-"]')).forEach(function(h){var k=h.id.slice(2);if(placed[k])return;var c=$('s-'+k);wrap.insertBefore(h,anchor);if(c)wrap.insertBefore(c,anchor)});
+  [].slice.call(wrap.querySelectorAll('h2[id^="h-"]')).forEach(function(h){var k=h.id.slice(2);if(placed[k]||h.closest('#livetop'))return;var c=$('s-'+k);wrap.insertBefore(h,anchor);if(c)wrap.insertBefore(c,anchor)});
   /* menu dans le même ordre, avec séparateurs */
   var sm=$('smenu');if(sm){[].slice.call(sm.querySelectorAll('.smsep')).forEach(function(x){x.remove()});G.forEach(function(g,i){g[4].forEach(function(k){var a=sm.querySelector('a[data-k="'+k+'"]');if(a)sm.appendChild(a)})})}
   function vis(k){var c=$('s-'+k);if(!c)return false;if(c.style.display==='none')return false;var e=c.querySelector('.empty');return !(e&&c.children.length===1)}
@@ -699,9 +704,9 @@ setTimeout(function(){(function eduCats(D,mine){
   document.addEventListener('click',function(e){var a=e.target.closest('#smenu a[href^="#h-"]');if(!a)return;var h=document.getElementById(a.getAttribute('href').slice(1));if(h&&h.__tog&&h.classList.contains('sec-colh'))h.__tog(false)});
 })()}catch(e){console.error(e)}try{(function eduPins(){
   var KEY='ge-pins',P=[];try{P=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){}
-  var hs=[].slice.call(document.querySelectorAll('h2[id^="h-"]'));if(!hs.length)return;var wrap=hs[0].parentNode;
+  var hs=[].slice.call(document.querySelectorAll('h2[id^="h-"]'));if(!hs.length)return;var h0=hs.filter(function(h){return !h.closest('#livetop')})[0];if(!h0)return;var wrap=h0.parentNode;
   if(!window.__secOrder||window.__secOrder.length!==hs.length)window.__secOrder=hs.map(function(h){return h.id.slice(2)});
-  function els(k){return [document.getElementById('h-'+k),document.getElementById('s-'+k+'-note'),document.getElementById('s-'+k)].filter(Boolean)}
+  function els(k){var h=document.getElementById('h-'+k);if(h&&h.closest('#livetop')){var ph=document.getElementById('ltph-'+k);return ph&&ph.parentNode===wrap?[ph]:[]}return [h,document.getElementById('s-'+k+'-note'),document.getElementById('s-'+k)].filter(Boolean)}
   function apply(){P=P.filter(function(k){return document.getElementById('h-'+k)});var order=P.concat(window.__secOrder.filter(function(k){return P.indexOf(k)<0}));
     var last=els(order[order.length-1]);var all=[].slice.call(wrap.children);var anchor=document.getElementById('foot');if(!anchor||anchor.parentNode!==wrap){var mx=-1;order.forEach(function(k){els(k).forEach(function(e){mx=Math.max(mx,all.indexOf(e))})});anchor=all[mx+1]||null}
     var first=null;order.forEach(function(k){var i=all.indexOf(document.getElementById('h-'+k));if(first==null||i<first)first=i});
